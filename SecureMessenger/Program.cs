@@ -11,6 +11,7 @@ using System.Threading;
 using System.Collections.Generic;
 using MySql.Data.MySqlClient;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using System.Linq;
 
 namespace Messenger
 {
@@ -18,8 +19,10 @@ namespace Messenger
     {
         static class Server
         {
-            static string masterKey = "01234567890123456789012345678901";
+            static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
+            static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
             const int BUFF_SIZE = 1024;
+            // Настройка Сокета для подключения
             static IPAddress IP;
             static int port;
             static IPHostEntry ipHost = Dns.GetHostEntry("localhost");
@@ -27,42 +30,48 @@ namespace Messenger
             static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 11000);
             static Socket sListener = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-            static private List<Thread> threads = new List<Thread>();      // список потоков приложения (кроме родительского
+            static private List<Thread> threads = new List<Thread>(); // Список потоков для работы с клиентами
+            static private Dictionary<Socket, bool> clients = new Dictionary<Socket, bool>(); // Клиентские сокеты с меткой авторизации
 
-            static List<Socket> clients = new List<Socket>();
             static MySqlConnection sql;
+            /// <summary>
+            /// Метод запуска приложения сервера
+            /// </summary>
             static public void StartServer()
             {
+                // Подключение к базе данных
                 try
                 {
-                    Console.WriteLine("Openning Connection ...");
+                    Console.WriteLine("Подключение к базе данных...");
                     sql = DBConnect();
                     sql.Open();
-                    Console.WriteLine("DataBase connected!");
+                    Console.WriteLine("База данных подключена!");
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Error: " + e.Message);
+                    Console.WriteLine("Ошибка: " + e.Message);
                 }
-                IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());    // информация об IP-адресах и имени машины, на которой запущено приложение
-                IPAddress IP = hostEntry.AddressList[0];                        // IP-адрес, который будет указан при создании сокета
-                int Port = 11000;                                                // порт, который будет указан при создании сокета
-
+                IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName()); // Информация об IP-адресах и имени машины, на которой запущено приложение
+                IPAddress IP = hostEntry.AddressList[0]; // IP-адрес, который будет указан при создании сокета
+                int Port = 11000;  // Порт, который будет указан при создании сокета
+                // Настройка сокета сервара
                 try
                 {
                     sListener.Bind(ipEndPoint);
                     sListener.Listen(10);
                     threads.Clear();
-                    threads.Add(new Thread(ReceiveMessage));
+                    threads.Add(new Thread(ReceiveMessage)); // Запуск поктока на работу с подключенным клиентом
                     threads[threads.Count - 1].Start();
-
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.ToString());
                 }
             }
-
+            /// <summary>
+            /// Метод подключения к базе данных
+            /// </summary>
+            /// <returns>Коннет с базой данных</returns>
             static MySqlConnection DBConnect()
             {
                 string host = "localhost";
@@ -73,221 +82,236 @@ namespace Messenger
                 string conectData = $"Server={host};Database={database};User ID={username};Password={password};";
                 return new MySqlConnection(conectData);
             }
-
+            /// <summary>
+            /// Метод работы с клиентами
+            /// </summary>
             static void ReceiveMessage()
             {
                 while (true)
                 {
                     Console.WriteLine("Ожидаем соединение через порт {0}", ipEndPoint);
-
-                    // Программа приостанавливается, ожидая входящее соединение
-                    Socket clientSocket = sListener.Accept();           // получаем ссылку на очередной клиентский сокет
-                    if (!clients.Contains(clientSocket))
-                        clients.Add(clientSocket);
-                    threads.Add(new Thread(ReadMessages));          // создаем и запускаем поток, обслуживающий конкретный клиентский сокет
+                    Socket clientSocket = sListener.Accept(); // Получение ссылки на клиентский сокет
+                    if (!clients.ContainsKey(clientSocket))
+                        clients.Add(clientSocket, false);
+                    threads.Add(new Thread(ReadMessages)); // Создание и запуск потока, обслуживающий конкретный клиентский сокет
                     threads[threads.Count - 1].Start(clientSocket);
-
                 }
-
-                static void ReadMessages(object ClientSock)
+            }
+            /// <summary>
+            /// Метод получения и обработки пакетов от клиента
+            /// </summary>
+            /// <param name="ClientSock">Сокет конкретного клиента</param>
+            static void ReadMessages(object ClientSock)
+            {
+                bool clientIsConnected = true;
+                while (clientIsConnected)
                 {
-                    string msg = "";        // полученное сообщение
-                    //byte[] decryptedBytes = new byte[1024];
-                    // входим в бесконечный цикл для работы с клиентским сокетом
-                    while (true)
+                    byte[] buff = new byte[BUFF_SIZE];     // Буфер прочитанных из сокета байтов
+                    ((Socket)ClientSock).Receive(buff);    // Получаем последовательность байтов из сокета в буфер buff
+                    string[] infoPackage = Encoding.UTF8.GetString(Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~');
+                    // Обработка пакетов только авторизаованных клиентов, или клиентов, проходящих регистрацию или аутентификацию
+                    if (infoPackage[0] != "A" && infoPackage[0] != "R" && clients[(Socket)ClientSock] == false)
+                        continue;
+                    if (infoPackage[0] == "F") // Метка получения файла
                     {
-                        byte[] buff = new byte[BUFF_SIZE];                           // буфер прочитанных из сокета байтов
-                        ((Socket)ClientSock).Receive(buff);                     // получаем последовательность байтов из сокета в буфер buff
-
-                        string[] infoPackage = Encoding.ASCII.GetString(Kuznechik.Decrypt(buff, Encoding.ASCII.GetBytes(masterKey))).Trim('\0').Split('~');
-
-                        if (infoPackage[0] == "F")
+                        string fileName = infoPackage[1];
+                        int bytesReceived;
+                        // Содание файла для записи передаваемых зашифрованных байтов файла
+                        using (FileStream file = File.OpenWrite(fileName))
                         {
-                            string fileName = infoPackage[1];
-                            int bytesReceived;
-                            using (FileStream file = File.OpenWrite(fileName))
+                            // Определение количества необходимых пакетов
+                            int packages = int.Parse(infoPackage[2]) / BUFF_SIZE;
+                            if (long.Parse(infoPackage[2]) % BUFF_SIZE != 0)
+                                packages++;
+                            // Запись зашифрованных байтов в файл
+                            for (int i = 0; i < packages; i++)
                             {
-                                int packages = int.Parse(infoPackage[2]) / BUFF_SIZE;
-                                if (long.Parse(infoPackage[2]) % BUFF_SIZE != 0)
-                                    packages++;
-                                for (int i = 0; i < packages; i++)
-                                {
-                                    bytesReceived = ((Socket)ClientSock).Receive(buff);
-                                    file.Write(buff, 0, bytesReceived);
-                                }
-                                Console.WriteLine($"File {fileName} recived successful! Length = {file.Length}");
-
-                                Thread.Sleep(1000);
+                                bytesReceived = ((Socket)ClientSock).Receive(buff);
+                                file.Write(buff, 0, bytesReceived);
                             }
-                            using (FileStream sourceStream = File.OpenRead(fileName))
-                            {
-                                // Создаем или перезаписываем файл назначения
-                                using (FileStream destinationStream = File.Create("dec.jpg"))
-                                {
-                                    // Создаем буфер для чтения и записи данных
-                                    byte[] buffer = new byte[BUFF_SIZE];
-                                    int bytesRead;
-
-                                    // Читаем данные из исходного файла и записываем их в файл назначения
-                                    while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
-                                    {
-                                        byte[] encryptedBytes = Kuznechik.Decrypt(buffer, Encoding.ASCII.GetBytes(masterKey));
-                                        destinationStream.Write(encryptedBytes, 0, bytesRead);
-                                    }
-                                }
-                            }
-                            SendFile(fileName);
+                            Console.WriteLine($"Файл {fileName} Получен успешно! Вес файла: {file.Length} Байт");
+                            Thread.Sleep(500);
                         }
-                        else if (infoPackage[0] == "M")
+                        //// Открытие полученного зашифрованного файла
+                        //using (FileStream sourceStream = File.OpenRead(fileName))
+                        //{
+                        //    // Создание расшифрованного файла
+                        //    using (FileStream destinationStream = File.Create("dec.jpg"))
+                        //    {
+                        //        // Создаем буфер для чтения и записи данных
+                        //        byte[] buffer = new byte[BUFF_SIZE];
+                        //        int bytesRead;
+                        //        // Расшифровка байтов из полученного файла и запись их в созданный
+                        //        while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
+                        //        {
+                        //            byte[] encryptedBytes = Kuznechik.Decrypt(buffer, bytesMasterKey);
+                        //            destinationStream.Write(encryptedBytes, 0, bytesRead);
+                        //        }
+                        //    }
+                        //}
+                        SendFile(fileName); // Отправка зашифрованного файла всем клиентам
+                    }
+                    else if (infoPackage[0] == "M") // Метка получения сообщения
+                    {
+                        Console.WriteLine(infoPackage[1].Trim('\0'));
+                        SendMessage(buff);
+                    }
+                    else if (infoPackage[0] == "R") // Метка решистрации клиента
+                    {
+                        string command = $"SELECT * FROM test_users WHERE login = \"{infoPackage[1]}\"";
+                        // Поиск в бд клиента с указанным логином
+                        using (MySqlCommand cmd = new MySqlCommand(command, sql))
                         {
-                            Console.WriteLine(infoPackage[1].Trim('\0'));
-                            SendMessage(buff);
-                        }
-                        else if (infoPackage[0] == "R")
-                        {
-                            string command = $"SELECT * FROM test_users WHERE login = \"{infoPackage[1]}\"";
-                            using (MySqlCommand cmd = new MySqlCommand(command, sql))
-                            {
-                                // Параметризованный запрос для предотвращения SQL-инъекций
-                                cmd.Parameters.AddWithValue("@login", "\"infoPackage[1]\"");
-                                using (MySqlDataReader reader = cmd.ExecuteReader())
-                                    if (reader.Read())
-                                    {
-                                        Console.WriteLine("Пользователь с таким логином уже существует!");
-                                        ((Socket)ClientSock).Send(Kuznechik.Encript(
-                                                Encoding.ASCII.GetBytes("~M~Пользователь с таким логином уже существует!~"),
-                                                Encoding.ASCII.GetBytes(masterKey)));
-                                        break;
-                                    }
-                            }
-                            string hashPassword = Encoding.ASCII.GetString(Streebog.HashFunc(Encoding.ASCII.GetBytes(infoPackage[2]), 0, 0));
-                            command = $"Insert into test_users values(\"{infoPackage[1]}\", \"{hashPassword}\")";
-                            using (MySqlCommand cmd = new MySqlCommand(command, sql))
-                            {
-                                int rowsAffected = cmd.ExecuteNonQuery();
-                                if (rowsAffected > 0)
+                            // Параметризованный запрос для предотвращения SQL-инъекций
+                            cmd.Parameters.AddWithValue("@login", "\"infoPackage[1]\"");
+                            // Получение такеого клиента
+                            using (MySqlDataReader reader = cmd.ExecuteReader())
+                                if (reader.Read())
                                 {
-                                    Console.WriteLine("Пользователь зарегистрирован.");
+                                    string login = reader.GetString("login");
+                                    Console.WriteLine($"Пользователь {login} уже существует!");
                                     ((Socket)ClientSock).Send(Kuznechik.Encript(
-                                                Encoding.ASCII.GetBytes("~M~Вы успешно зарегистрировались!~"),
-                                                Encoding.ASCII.GetBytes(masterKey)));
+                                            Encoding.UTF8.GetBytes($"M~Пользователь {login} уже существует!~"),
+                                            bytesMasterKey));
+                                    continue; // Выход из процесса регистрации, если пользователь с таким логином уже существует
                                 }
-                                else
-                                {
-                                    Console.WriteLine("Регистрация завершилась с ошибкой.");
-                                    ((Socket)ClientSock).Send(Kuznechik.Encript(
-                                                Encoding.ASCII.GetBytes("M~Регистрация завершилась с ошибкой.~"),
-                                                Encoding.ASCII.GetBytes(masterKey)));
-                                }
-                            }
-
-                            command = "select * from test_users";
-                            using (MySqlCommand selectCmd = new MySqlCommand(command, sql))
-                            {
-                                using (MySqlDataReader reader = selectCmd.ExecuteReader())
-                                {
-                                    while (reader.Read())
-                                    {
-                                        // Чтение данных из каждой строки результата запроса
-                                        string value1 = reader.GetString("login");
-                                        string value2 = reader.GetString("password");
-
-                                        // Используйте полученные значения по вашему усмотрению
-                                        Console.WriteLine($"login: {value1}, password: {value2}");
-                                    }
-                                }
-                            }
                         }
-                        else if (infoPackage[0] == "A")
+                        // Получение Стрибог-хэша пароля
+                        string hashPassword = Encoding.UTF8.GetString(
+                            Streebog.HashFunc(Encoding.UTF8.GetBytes(infoPackage[2]), 0, 0));
+                        command = $"Insert into test_users values(\"{infoPackage[1]}\", \"{hashPassword}\")";
+                        // Создание записи в бд с данными регистрирующегося клиента
+                        using (MySqlCommand cmd = new MySqlCommand(command, sql))
                         {
-                            string command = $"SELECT * FROM test_users WHERE login = \"{infoPackage[1]}\"";
-                            using (MySqlCommand cmd = new MySqlCommand(command, sql))
+                            // Выполнение запроса в бд
+                            int rowsAffected = cmd.ExecuteNonQuery();
+                            if (rowsAffected > 0)
                             {
-                                // Параметризованный запрос для предотвращения SQL-инъекций
-                                cmd.Parameters.AddWithValue("@login", "\"infoPackage[1]\"");
-                                using (MySqlDataReader reader = cmd.ExecuteReader())
+                                Console.WriteLine("Пользователь зарегистрирован.");
+                                ((Socket)ClientSock).Send(Kuznechik.Encript(
+                                            Encoding.UTF8.GetBytes("M~Вы успешно зарегистрировались!~"),
+                                            bytesMasterKey));
+                            }
+                            else
+                            {
+                                Console.WriteLine("Регистрация завершилась с ошибкой.");
+                                ((Socket)ClientSock).Send(Kuznechik.Encript(
+                                            Encoding.UTF8.GetBytes("M~Регистрация завершилась с ошибкой.~"),
+                                            bytesMasterKey));
+                            }
+                        }
+                        //command = "select * from test_users";
+                        //// Получение всех записей  в бд
+                        //using (MySqlCommand selectCmd = new MySqlCommand(command, sql))
+                        //{
+                        //    using (MySqlDataReader reader = selectCmd.ExecuteReader())
+                        //    {
+                        //        while (reader.Read())
+                        //        {
+                        //            string login = reader.GetString("login");
+                        //            string password = reader.GetString("password");
+                        //            Console.WriteLine($"login: {login}, password: {password}");
+                        //        }
+                        //    }
+                        //}
+                    }
+                    else if (infoPackage[0] == "A") // Метка аутентификации клиента
+                    {
+                        string command = $"SELECT * FROM test_users WHERE login = \"{infoPackage[1]}\"";
+                        // Посик в бд клиента с указанным логином
+                        using (MySqlCommand cmd = new MySqlCommand(command, sql))
+                        {
+                            // Параметризованный запрос для предотвращения SQL-инъекций
+                            cmd.Parameters.AddWithValue("@login", "\"infoPackage[1]\"");
+                            // Проверка полученного пароля для аутентификации с хранящимся в бд
+                            using (MySqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                bool userExist = false;
+                                if (reader.Read())
                                 {
-                                    bool userExist = false;
-                                    if (reader.Read())
+                                    userExist = true;
+                                    // Получение шэша паоля из бд для сравнения
+                                    string storedPassword = reader.GetString("password");
+                                    // Получение Стрибог-хэша пароля
+                                    string hashPassword = Encoding.UTF8.GetString(
+                                        Streebog.HashFunc(Encoding.UTF8.GetBytes(infoPackage[2]), 0, 0));
+                                    // Сравнение хэшей пароля
+                                    if (storedPassword == hashPassword)
                                     {
-                                        userExist = true;
-                                        string storedPassword = reader.GetString("password");
-                                        string hashPassword = Encoding.ASCII.GetString(Streebog.HashFunc(Encoding.ASCII.GetBytes(infoPackage[2]), 0, 0));
-
-                                        if (storedPassword == hashPassword)
-                                        {
-                                            Console.WriteLine("Пользователь авторизировался");
-                                            ((Socket)ClientSock).Send(Kuznechik.Encript(
-                                                Encoding.ASCII.GetBytes("M~Вы успешно авторизировались~"),
-                                                Encoding.ASCII.GetBytes(masterKey)));
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine($"Неудачная попытка входа в аккаунт {infoPackage[1]}");
-                                            ((Socket)ClientSock).Send(Kuznechik.Encript(
-                                                Encoding.ASCII.GetBytes("M~Неверный пароль~"),
-                                                Encoding.ASCII.GetBytes(masterKey)));
-                                        }
-                                    }
-                                    if (!userExist)
-                                    {
-                                        Console.WriteLine($"Попытка Выхода в несуществующий аккаун {infoPackage[1]}");
+                                        clients[(Socket)ClientSock] = true;
+                                        Console.WriteLine("Пользователь авторизировался");
                                         ((Socket)ClientSock).Send(Kuznechik.Encript(
-                                                Encoding.ASCII.GetBytes("M~Такого аккаунта не существует~"),
-                                                Encoding.ASCII.GetBytes(masterKey)));
+                                            Encoding.UTF8.GetBytes("M~Вы успешно авторизировались~"),
+                                            bytesMasterKey));
                                     }
+                                    else
+                                    {
+                                        Console.WriteLine($"Неудачная попытка входа в аккаунт {infoPackage[1]}");
+                                        ((Socket)ClientSock).Send(Kuznechik.Encript(
+                                            Encoding.UTF8.GetBytes("M~Неверный пароль~"),
+                                            bytesMasterKey));
+                                    }
+                                }
+                                if (!userExist)
+                                {
+                                    Console.WriteLine($"Попытка входа в несуществующий аккаунт {infoPackage[1]}");
+                                    ((Socket)ClientSock).Send(Kuznechik.Encript(
+                                            Encoding.UTF8.GetBytes("M~Такого аккаунта не существует~"),
+                                            bytesMasterKey));
                                 }
                             }
                         }
-                        Thread.Sleep(500);
                     }
-                }
-
-                static void SendFile(string fileName)
-                {
-                    Console.WriteLine("Sending file...");
-                    byte[] buff = new byte[BUFF_SIZE];
-
-                    foreach (Socket client in clients)
+                    else if (infoPackage[0] == "Q")
                     {
-                        FileInfo file = new FileInfo(fileName);
-                        buff = Encoding.ASCII.GetBytes($"F~{file.Name}~{file.Length}");
-                        client.Send(buff);
-                        client.SendFile(fileName);
-                        Console.WriteLine($"File sended succsessful! Length = {file.Length}");
+                        Console.WriteLine($"Клиент {(Socket)ClientSock} отключился");
+                        ((Socket)ClientSock).Send(Kuznechik.Encript(
+                                            Encoding.UTF8.GetBytes("M~До новых встреч!~"),
+                                            bytesMasterKey));
+                        clientIsConnected = false;
                     }
-
+                    Thread.Sleep(500);
                 }
-
-                static void SendMessage(byte[] buff)
+            }
+            /// <summary>
+            /// Метод отправки полученного файла всем клиентам
+            /// </summary>
+            /// <param name="fileName">Имя файла</param>
+            static void SendFile(string fileName)
+            {
+                Console.WriteLine("Отправка файла клиентам...");
+                byte[] buff = new byte[BUFF_SIZE];
+                // Получение списка авторизованных клиентов
+                var authClient = clients.Where(kv => kv.Value == true).Select(kv => kv.Key).ToList();
+                // Отправка файла авторизованным клиентам
+                foreach (Socket client in authClient)
                 {
-                    //byte[] buff = Encoding.ASCII.GetBytes(msg);
-                    foreach (Socket client in clients)
-                    {
-                        client.Send(buff);
-                    }
+                    FileInfo file = new FileInfo(fileName);
+                    buff = Encoding.UTF8.GetBytes($"F~{file.Name}~{file.Length}~");
+                    client.Send(buff);
+                    client.SendFile(fileName);
+                    Console.WriteLine($"Файл успешно отправлен! Вес файла: {file.Length} Байт");
+                }
+            }
+            /// <summary>
+            /// Метод отправки полученного сообщения всем клиентам
+            /// </summary>
+            /// <param name="buff">Байты сообщения в кодировке UTF8</param>
+            static void SendMessage(byte[] buff)
+            {
+                // Получение списка авторизованных клиентов
+                var authClient = clients.Where(kv => kv.Value == true).Select(kv => kv.Key).ToList();
+                // Отправка сообщения авторизованным клиентам
+                foreach (Socket client in authClient)
+                {
+                    client.Send(buff);
                 }
             }
         }
 
         static void Main(string[] args)
         {
-            Server.StartServer();
-
-
-            //Console.Write("Введите текст для зашифрования: ");
-            //string textToEncrypt = Console.ReadLine();
-            //string masterKey = "01234567890123456789012345678901";  //Пароль должен быть 256 бит (32 символа)
-            //byte[] encryptedBytes = Kuznechik.Encript(Encoding.Default.GetBytes(textToEncrypt), Encoding.Default.GetBytes(masterKey)); //Получение массива байт зашифрованного файла
-            //string encryptedText = Encoding.Default.GetString(encryptedBytes);
-            //Console.WriteLine("Зашифрованный текст: " + encryptedText);
-
-
-            //byte[] decryptedBytes = Kuznechik.Decrypt(encryptedBytes, Encoding.Default.GetBytes(masterKey)); //Получение массива байт расшифрованного файла
-            //string decryptedText = Encoding.Default.GetString(decryptedBytes);
-            //Console.WriteLine("Расшифрованный текст: " + decryptedText);
-
+            Server.StartServer(); // Запуск сервера
         }
-
     }
 }

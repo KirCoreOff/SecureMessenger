@@ -15,60 +15,69 @@ namespace Messenger
     {
         static class Client
         {
-            static string masterKey = "01234567890123456789012345678901";
+            static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
+            static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
             const int BUFF_SIZE = 1024;
+            // Настройка Сокета для подключения
             static int port = 11000;
             static IPHostEntry ipHost = Dns.GetHostEntry("localhost");
             static IPAddress ipAddr = ipHost.AddressList[0];
             static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, port);
-
             static Socket serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
+            static bool connectedToServer = true;
+            /// <summary>
+            /// Метод запуска клиентского приложения
+            /// </summary>
             static public void StartClient()
             {
-                serverSocket.Connect(ipEndPoint);
+                serverSocket.Connect(ipEndPoint); // Подключение к серверу
                 Thread.Sleep(500);
                 Thread th = new Thread(ReadMessage);
-                th.Start();
+                th.Start(); // Запуск потока на общение с сервером
             }
-
+            /// <summary>
+            /// Метод общения с сервером
+            /// </summary>
             static void ReadMessage()
-            {               
-                string msg;
-                while (true)
+            {             
+                while (connectedToServer)
                 {
                     byte[] buff = new byte[BUFF_SIZE];
-                    serverSocket.Receive(buff);                     // получаем последовательность байтов из сокета в буфер buff
-                    string[] infoPackage = Encoding.ASCII.GetString(Kuznechik.Decrypt(buff, Encoding.ASCII.GetBytes(masterKey))).Trim('\0').Split('~');
+                    serverSocket.Receive(buff);    // Получаем последовательность байтов из сокета в буфер buff
+                    string[] infoPackage = Encoding.UTF8.GetString
+                        (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~'); // Расшифровка и разбиение пакета на информациронные части 
 
-                    if (infoPackage[0] == "F")
+                    if (infoPackage[0] == "F") // Метка получения файла
                     {
                         string fileName = infoPackage[1];
                         int bytesReceived;
+                        // Содание файла для записи передаваемых зашифрованных байтов файла
                         using (FileStream file = File.OpenWrite($"1_{fileName}"))
                         {
+                            // Определение количества необходимых пакетов
                             int packages = int.Parse(infoPackage[2]) / BUFF_SIZE;
                             if (long.Parse(infoPackage[2]) % BUFF_SIZE != 0)
                                 packages++;
-                            for (int i = 0; i < packages; i++)
+                            // Запись зашифрованных байтов в файл
+                            for (int i = 0; i < packages; i++) 
                             {
                                 bytesReceived = serverSocket.Receive(buff);
                                 file.Write(buff, 0, bytesReceived);
                             }
-                            Console.WriteLine($"File {fileName} recived successful! Length = {file.Length}");
-                            using (FileStream sourceStream = File.OpenRead($"1_{fileName}"))
+                            Console.WriteLine($"Файл {fileName} получен успешно! Вес файлоа: {file.Length} Байт");
+                            // Открытие полученного зашифрованного файла
+                            using (FileStream sourceStream = File.OpenRead($"1_{fileName}")) 
                             {
-                                // Создаем или перезаписываем файл назначения
-                                using (FileStream destinationStream = File.Create($"d_{fileName}"))
+                                // Создание расшифрованного файла
+                                using (FileStream destinationStream = File.Create($"d_{fileName}")) 
                                 {
                                     // Создаем буфер для чтения и записи данных
                                     byte[] buffer = new byte[BUFF_SIZE];
                                     int bytesRead;
-
-                                    // Читаем данные из исходного файла и записываем их в файл назначения
+                                    // Расшифровка байтов из полученного файла и запись их в созданный 
                                     while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
                                     {
-                                        byte[] encryptedBytes = Kuznechik.Decrypt(buffer, Encoding.ASCII.GetBytes(masterKey));
+                                        byte[] encryptedBytes = Kuznechik.Decrypt(buffer, bytesMasterKey);
                                         destinationStream.Write(encryptedBytes, 0, bytesRead);
                                     }
 
@@ -76,115 +85,109 @@ namespace Messenger
                             }
                         }
                     }
-                    else if (infoPackage[0] == "M")
+                    else if (infoPackage[0] == "M") // Метка получения сообщения
                     {
                         Console.WriteLine(infoPackage[1].Trim('\0'));
                     }
-                    //msg = Encoding.ASCII.GetString(buff).Trim('\0');     // выполняем преобразование байтов в последовательность символов
-                    //byte[] decryptedBytes = Kuznechik.Decrypt(buff, Encoding.ASCII.GetBytes(masterKey));
-                    //string decryptedText = Encoding.ASCII.GetString(decryptedBytes).Substring(0, Encoding.ASCII.GetString(decryptedBytes).IndexOf('\0'));
-
-                    //msg = Encoding.ASCII.GetString(buff).Trim('\0');     // выполняем преобразование байтов в последовательность символов
-                    //Console.WriteLine($"Полученный сообщение: {msg} длинной: {msg.Length}");
-                    //byte[] decryptedBytes = Kuznechik.Decrypt(buff, Encoding.ASCII.GetBytes(masterKey));
-                    //string decryptedText = Encoding.ASCII.GetString(decryptedBytes).Substring(0, Encoding.ASCII.GetString(decryptedBytes).IndexOf('\0'));
-
-
-                    //Показываем данные на консоли
-                    //Console.WriteLine($"расшифрованное сообщение: {decryptedText} длинной: {decryptedText.Length}");
-
-                    // Показываем данные на консоли
-                    //Console.WriteLine("Полученный текст: " + decryptedText + "\n\n");
                 }
             }
-
+            /// <summary>
+            /// Метод отправки сообщения серверу
+            /// </summary>
+            /// <param name="msg">Сообщение</param>
             static public void SendMessage(string msg)
             {
-                byte[] encryptedBytes = Kuznechik.Encript(Encoding.ASCII.GetBytes($"M~{msg}~"), Encoding.ASCII.GetBytes(masterKey));
+                byte[] encryptedBytes = Kuznechik.Encript(Encoding.UTF8.GetBytes($"M~{msg}~"), bytesMasterKey);
                 serverSocket.Send(encryptedBytes);
-                //Console.WriteLine($"Соббщение: {msg} длинной: {msg.Length} закодировано в: {Encoding.ASCII.GetString(encryptedBytes)} длинной: {Encoding.ASCII.GetString(encryptedBytes).Length}");
-                //byte[] decryptedBytes = Kuznechik.Decrypt(encryptedBytes, Encoding.ASCII.GetBytes(masterKey));
-                //string decryptedText = Encoding.ASCII.GetString(decryptedBytes);
-                //Console.WriteLine($"расшифрованное сообщение: {decryptedText} длинной: {decryptedText.Length}");
-
-                //buff = Encoding.Default.GetBytes(msg);
-                //serverSocket.Send(buff);
             }
-
+            /// <summary>
+            /// Метод отправки файла серверу
+            /// </summary>
             static public void SendFile() 
             {
                 Console.WriteLine("Sending file...");
                 string filePath = "smile.jpg";
                 string encriptedFilePath = "encsmile.jpg";
                 string decriptedFilePath = "decsmile.jpg";
-                FileInfo file = new FileInfo(filePath);
-                //string filePath = "test.txt";
-                //string encriptedFilePath = "enctest.txt";
+                FileInfo file = new FileInfo(encriptedFilePath);
                 if (File.Exists(filePath))
                 {
+                    // Открытие файл на чтениен
                     using (FileStream sourceStream = File.OpenRead(filePath))
                     {
-                        // Создаем или перезаписываем файл назначения
+                        // Создание шифрованного файла
                         using (FileStream destinationStream = File.Create(encriptedFilePath))
                         {
                             // Создаем буфер для чтения и записи данных
                             byte[] buffer = new byte[BUFF_SIZE];
                             int bytesRead;
-
-                            // Читаем данные из исходного файла и записываем их в файл назначения
+                            // Процесс шифрования байтов файла
                             while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
                             {
-                                byte[] encryptedBytes = Kuznechik.Encript(buffer, Encoding.ASCII.GetBytes(masterKey));
+                                byte[] encryptedBytes = Kuznechik.Encript(buffer, bytesMasterKey);
                                 destinationStream.Write(encryptedBytes, 0, bytesRead);
                             }
-
                         }
                     }
-                    Console.WriteLine("File created");
+                    Console.WriteLine($"Файл {filePath} зашифрован в файл {encriptedFilePath}");
+                     
+                    //using (FileStream sourceStream = File.OpenRead(encriptedFilePath))
+                    //{
+                    //    // Создаем или перезаписываем файл назначения
+                    //    using (FileStream destinationStream = File.Create(decriptedFilePath))
+                    //    {
+                    //        // Создаем буфер для чтения и записи данных
+                    //        byte[] buffer = new byte[BUFF_SIZE];
+                    //        int bytesRead;
 
-                    using (FileStream sourceStream = File.OpenRead(encriptedFilePath))
-                    {
-                        // Создаем или перезаписываем файл назначения
-                        using (FileStream destinationStream = File.Create(decriptedFilePath))
-                        {
-                            // Создаем буфер для чтения и записи данных
-                            byte[] buffer = new byte[BUFF_SIZE];
-                            int bytesRead;
-
-                            // Читаем данные из исходного файла и записываем их в файл назначения
-                            while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
-                            {
-                                byte[] encryptedBytes = Kuznechik.Decrypt(buffer, Encoding.ASCII.GetBytes(masterKey));
-                                destinationStream.Write(encryptedBytes, 0, bytesRead);
-                            }
-
-                        }
-                    }
-                    Console.WriteLine("File decrypted");
-
+                    //        // Читаем данные из исходного файла и записываем их в файл назначения
+                    //        while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
+                    //        {
+                    //            byte[] encryptedBytes = Kuznechik.Decrypt(buffer, bytesMasterKey);
+                    //            destinationStream.Write(encryptedBytes, 0, bytesRead);
+                    //        }
+                    //    }
+                    //}
+                    //Console.WriteLine("File decrypted");
                     //serverSocket.SendFile(filePath);
-                    byte[] buff = Encoding.ASCII.GetBytes($"F~{file.Name}~{file.Length}~");
+
+
+                    byte[] buff = Encoding.UTF8.GetBytes($"F~{file.Name}~{file.Length}~"); // Служебрный пакет
                     serverSocket.Send(buff);
                     serverSocket.SendFile(encriptedFilePath);
-                    Console.WriteLine($"File sended succsessful! Length = {file.Length}");
+                    Console.WriteLine($"Файл отправлен успешно! Вес файла: {file.Length} Байт");
                 }
-                else Console.WriteLine("File not exist");
+                else Console.WriteLine("Файл не найден");
             }
 
+            /// <summary>
+            /// Метод регистрации клиента в системе
+            /// </summary>
             static public void Registration()
             {
-                string login = "login11";
-                string password = "password11";
-                byte[] buff = Kuznechik.Encript(Encoding.ASCII.GetBytes($"R~{login}~{password}~"), Encoding.ASCII.GetBytes(masterKey));
+                string login = "login121";
+                string password = "password121";
+                byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"R~{login}~{password}~"), bytesMasterKey);
+                serverSocket.Send(buff);
+            }
+            /// <summary>
+            /// Метод аутентификации клиента в системе
+            /// </summary>
+            static public void Auth()
+            {
+                string login = "login121";
+                string password = "password121";
+                byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"A~{login}~{password}~"), bytesMasterKey);
                 serverSocket.Send(buff);
             }
 
-            static public void Auth()
+            static public void DisconnectFromServer()
             {
-                string login = "login11";
-                string password = "password11";
-                byte[] buff = Kuznechik.Encript(Encoding.ASCII.GetBytes($"A~{login}~{password}~"), Encoding.ASCII.GetBytes(masterKey));
-                serverSocket.Send(buff);
+                byte[] encryptedBytes = Kuznechik.Encript(Encoding.UTF8.GetBytes($"Q~"), bytesMasterKey);
+                serverSocket.Send(encryptedBytes);
+                connectedToServer = true;
+                serverSocket.Close();
+                Console.WriteLine("Вы отключились от сервера");
             }
         }
 
@@ -192,9 +195,15 @@ namespace Messenger
         {      
             Client.StartClient();
             //Client.SendFile();
-            //Client.Registration();
-            //Client.Auth();
+            Client.Registration();
+            Client.Auth();
+            Thread.Sleep(300);
             Client.SendMessage("привет");
+            Thread.Sleep(300);
+            Client.DisconnectFromServer();
+            Thread.Sleep(300);
+            //Client.SendMessage("привет");
+
             //Client.SendMessage("world");
 
         }
