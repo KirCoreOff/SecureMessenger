@@ -43,7 +43,14 @@ namespace Messenger
                 while (connectedToServer)
                 {
                     byte[] buff = new byte[BUFF_SIZE];
-                    serverSocket.Receive(buff);    // Получаем последовательность байтов из сокета в буфер buff
+                    try
+                    {
+                        serverSocket.Receive(buff);    // Получаем последовательность байтов из сокета в буфер buff
+                    }
+                    catch (Exception)
+                    {
+
+                    }
                     string[] infoPackage = Encoding.UTF8.GetString
                         (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~'); // Расшифровка и разбиение пакета на информациронные части 
 
@@ -59,17 +66,17 @@ namespace Messenger
                             if (long.Parse(infoPackage[2]) % BUFF_SIZE != 0)
                                 packages++;
                             // Запись зашифрованных байтов в файл
-                            for (int i = 0; i < packages; i++) 
+                            for (int i = 0; i < packages; i++)
                             {
                                 bytesReceived = serverSocket.Receive(buff);
                                 file.Write(buff, 0, bytesReceived);
                             }
                             Console.WriteLine($"Файл {fileName} получен успешно! Вес файлоа: {file.Length} Байт");
                             // Открытие полученного зашифрованного файла
-                            using (FileStream sourceStream = File.OpenRead($"1_{fileName}")) 
+                            using (FileStream sourceStream = File.OpenRead($"1_{fileName}"))
                             {
                                 // Создание расшифрованного файла
-                                using (FileStream destinationStream = File.Create($"d_{fileName}")) 
+                                using (FileStream destinationStream = File.Create($"d_{fileName}"))
                                 {
                                     // Создаем буфер для чтения и записи данных
                                     byte[] buffer = new byte[BUFF_SIZE];
@@ -98,7 +105,14 @@ namespace Messenger
             static public void SendMessage(string msg)
             {
                 byte[] encryptedBytes = Kuznechik.Encript(Encoding.UTF8.GetBytes($"M~{msg}~"), bytesMasterKey);
-                serverSocket.Send(encryptedBytes);
+                try
+                {
+                    serverSocket.Send(encryptedBytes);
+                } catch 
+                {
+                    Console.WriteLine("Соединение с сервером прервано.");
+                }
+                
             }
             /// <summary>
             /// Метод отправки файла серверу
@@ -165,8 +179,8 @@ namespace Messenger
             /// </summary>
             static public void Registration()
             {
-                string login = "login121";
-                string password = "password121";
+                string login = "login122";
+                string password = "password122";
                 byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"R~{login}~{password}~"), bytesMasterKey);
                 serverSocket.Send(buff);
             }
@@ -175,17 +189,19 @@ namespace Messenger
             /// </summary>
             static public void Auth()
             {
-                string login = "login121";
-                string password = "password121";
+                string login = "login122";
+                string password = "password122";
                 byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"A~{login}~{password}~"), bytesMasterKey);
                 serverSocket.Send(buff);
             }
-
+            /// <summary>
+            /// Метод отключения от сервера
+            /// </summary>
             static public void DisconnectFromServer()
             {
                 byte[] encryptedBytes = Kuznechik.Encript(Encoding.UTF8.GetBytes($"Q~"), bytesMasterKey);
                 serverSocket.Send(encryptedBytes);
-                connectedToServer = true;
+                connectedToServer = false;
                 serverSocket.Close();
                 Console.WriteLine("Вы отключились от сервера");
             }
@@ -197,14 +213,20 @@ namespace Messenger
             //Client.SendFile();
             Client.Registration();
             Client.Auth();
-            Thread.Sleep(300);
-            Client.SendMessage("привет");
-            Thread.Sleep(300);
-            Client.DisconnectFromServer();
-            Thread.Sleep(300);
+            //Thread.Sleep(300);
             //Client.SendMessage("привет");
-
+            //Thread.Sleep(300);
+            //Client.SendMessage("мир");
+            //Thread.Sleep(300);
+            //Client.SendMessage("Как ваши дела?");
+            //Thread.Sleep(300);
             //Client.SendMessage("world");
+            //Thread.Sleep(300);
+            //Client.SendMessage("qwerqwe");
+            //Client.DisconnectFromServer();
+            //Thread.Sleep(300);
+            //Client.SendMessage("я отключился");
+
 
         }
     }
