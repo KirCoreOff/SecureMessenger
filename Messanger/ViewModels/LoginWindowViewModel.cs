@@ -1,11 +1,13 @@
 ﻿using Messanger.Infrastructure.Commands;
 using Messanger.ViewModels.Base;
+using Messenger;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Security;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -20,6 +22,7 @@ namespace Messanger.ViewModels
         private void OnLoginUserCommandExecuted(object p)
         {
             // Сюда код подключения
+            Client.Auth();
         }
         private bool OnLoginUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length != 0;
         #endregion
@@ -32,6 +35,8 @@ namespace Messanger.ViewModels
             get => _UserName;
             set => Set(ref _UserName, value);
         }
+        #endregion
+        #region Пароль пользователя
         private SecureString _UserPassword ;
         public SecureString UserPassword
         {
@@ -45,6 +50,8 @@ namespace Messanger.ViewModels
             #region Commands
             LoginUserCommand = new LambdaCommand(OnLoginUserCommandExecuted, OnLoginUserCommandExecute);
             #endregion
+
+            Client.StartClient();
         }
     }
 }
