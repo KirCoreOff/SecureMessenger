@@ -5,7 +5,9 @@ VisualStudioVersion = 17.6.33815.320
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SecureMessenger", "SecureMessenger\SecureMessenger.csproj", "{1A39580B-31BB-461C-8B31-0499C9B9A123}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{B4D11AE2-FE3C-41B9-8183-C9ED41878221}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client", "Client\Client.csproj", "{B4D11AE2-FE3C-41B9-8183-C9ED41878221}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Messanger", "Messanger\Messanger.csproj", "{5C588E6F-A656-4BB7-AE19-1790509765BB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{B4D11AE2-FE3C-41B9-8183-C9ED41878221}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B4D11AE2-FE3C-41B9-8183-C9ED41878221}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B4D11AE2-FE3C-41B9-8183-C9ED41878221}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5C588E6F-A656-4BB7-AE19-1790509765BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5C588E6F-A656-4BB7-AE19-1790509765BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5C588E6F-A656-4BB7-AE19-1790509765BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5C588E6F-A656-4BB7-AE19-1790509765BB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
