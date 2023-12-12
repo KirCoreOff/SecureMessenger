@@ -27,6 +27,12 @@ namespace Messanger.ViewModels
         }
         private bool OnLoginUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length != 0;
         #endregion
+        public ICommand RegisterUserCommand { get; }
+        private void OnRegisterUserCommandExecuted(object p)
+        {
+            // Сюда код регистрации
+        }
+        private bool OnRegisterUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length != 0;
         #endregion
 
         #region Имя пользователя
@@ -95,6 +101,7 @@ namespace Messanger.ViewModels
         {
             #region Commands
             LoginUserCommand = new LambdaCommand(OnLoginUserCommandExecuted, OnLoginUserCommandExecute);
+            RegisterUserCommand = new LambdaCommand(OnRegisterUserCommandExecuted, OnRegisterUserCommandExecute);
             #endregion
 
             //Client.StartClient();

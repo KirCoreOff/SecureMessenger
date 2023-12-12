@@ -174,7 +174,7 @@
                     Foreground="#FF2E65BF" />
             <Button Style="{StaticResource btn_LoginSugnup}"
                     Content="Зарегистироваться"
-                    Width="200"
+                    Width="220"
                     Height="40"
                     Margin="20"
                     FontSize="22"
@@ -185,6 +185,7 @@
                     Opacity="0.8" />
         </StackPanel>
         <TextBlock Grid.Row="3"
+                   Margin="20, 5"
                    Text="{Binding ServerResponse}"
                    Foreground="{Binding ColorServerResponse}"
                    FontSize="18" />
