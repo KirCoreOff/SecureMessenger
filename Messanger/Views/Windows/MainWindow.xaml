@@ -7,16 +7,58 @@
         xmlns:local="clr-namespace:Messanger"
         mc:Ignorable="d"
         Title="{Binding TitleWindow}"
-        Height="450"
-        Width="800">
+        Height="800"
+        Width="500">
     <Window.DataContext>
         <vm:MainWindowViewModel />
     </Window.DataContext>
     <Grid>
-        <Button Content="ABCDEF"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Background="Gray"
-                Command="{Binding CloseApplicationCommmand}" />
+        <Grid.Background>
+            <LinearGradientBrush EndPoint="0.5,1"
+                                 StartPoint="0.5,0">
+                <GradientStop Color="Red"
+                              Offset="0.8" />
+                <GradientStop Color="White"
+                              Offset="0.2" />
+                <GradientStop Color="#FF0800FF"
+                              Offset="0.3" />
+                <GradientStop Color="#FE1A00FF"
+                              Offset="0.7" />
+            </LinearGradientBrush>
+        </Grid.Background>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="0.9*" />
+            <RowDefinition Height="0.1*" />
+            <RowDefinition Height="40" />
+        </Grid.RowDefinitions>
+        <ListBox Grid.Row="0"
+                 ItemsSource="{Binding StoryMessages}"
+                 Background="{x:Null}"
+                 FontSize="26"
+                 VerticalAlignment="Bottom"
+                 Foreground="DarkGray" 
+                 BorderThickness="0"/>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.8*" />
+                <ColumnDefinition Width="0.2*" />
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0"
+                     Margin="20"
+                     Text="{Binding CurrentMessage}"
+                     FontSize="24" />
+            <Button Grid.Column="1"
+                    Command="{Binding AttachFileCommand}"
+                    Margin="20" />
+        </Grid>
+        <TextBlock Grid.Row="2"
+                   Margin="20, 5"
+                   Text="{Binding Status}"
+                   FontSize="16" />
+        <!--<Button Content="ABCDEF"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Background="Gray"
+        Command="{Binding CloseApplicationCommmand}" /> -->
     </Grid>
 </Window>

@@ -12,6 +12,7 @@
         Width="500"
         ResizeMode="NoResize">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
         <Style x:Key="TB_UN"
                TargetType="TextBox">
             <Setter Property="Background"
@@ -91,6 +92,11 @@
     <Window.DataContext>
         <vm:LoginWindowViewModel />
     </Window.DataContext>
+    <Window.Visibility>
+        <Binding Path="IsViewVisible"
+                 Mode="TwoWay"
+                 Converter="{StaticResource BooleanToVisibility}" />
+    </Window.Visibility>
     <Grid>
         <Grid.Background>
             <LinearGradientBrush EndPoint="0.5,1"

@@ -1,15 +1,7 @@
 ﻿using Messanger.Infrastructure.Commands;
 using Messanger.ViewModels.Base;
-using Messenger;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
 using System.Security;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -67,9 +59,17 @@ namespace Messanger.ViewModels
             set => Set(ref _ColorServerResponse, value);
         }
         #endregion
+        #region Скрытие окна (не трогать)
+        private bool _IsViewVisible = true;
+        public bool IsViewVisible
+        {
+            get => _IsViewVisible;
+            set => Set(ref _IsViewVisible, value);
+        }
+        #endregion
 
         private void ChangeViewFromServerResponse(int responseCode)
-        {
+        {            
             switch (responseCode)
             {
                 case 0:
@@ -79,6 +79,7 @@ namespace Messanger.ViewModels
                         ColorServerResponse = Brushes.<Какой-нибудь цвет>;
                         ColorServerResponse = Brushes.Azure;                          
                           */
+                        IsViewVisible = false;
                     }
                     break;
                 case 1:
@@ -96,6 +97,12 @@ namespace Messanger.ViewModels
             }
         }
 
+        private void StartMainView()
+        {
+            var mainView = new MainWindow();
+            mainView.Show();
+
+        }
 
         public LoginWindowViewModel()
         {
