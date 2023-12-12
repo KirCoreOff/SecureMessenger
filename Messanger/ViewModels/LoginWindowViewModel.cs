@@ -46,7 +46,7 @@ namespace Messanger.ViewModels
         }
         #endregion
         #region Ответ сервера
-        private string _ServerResponse = "Все крута!";
+        private string _ServerResponse = String.Empty;
         public string ServerResponse
         {
             get => _ServerResponse;

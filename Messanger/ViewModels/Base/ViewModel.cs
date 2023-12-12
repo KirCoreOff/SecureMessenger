@@ -17,7 +17,7 @@ namespace Messanger.ViewModels.Base
             if (Equals(field, value)) 
                 return false;
             field = value;
-            OnPropertyChanged();
+            OnPropertyChanged(PropertyName);
             return true;
         }
     }
