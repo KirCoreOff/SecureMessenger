@@ -1,4 +1,4 @@
-﻿using Messenger.Infrastructure.Commands;
+using Messenger.Infrastructure.Commands;
 using Messenger.ViewModels.Base;
 using Messenger;
 using System;
@@ -24,6 +24,7 @@ namespace Messenger.ViewModels
         }
         private bool OnLoginUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length != 0;
         #endregion
+        #region Регистрация
         public ICommand RegisterUserCommand { get; }
         private void OnRegisterUserCommandExecuted(object p)
         {
@@ -32,7 +33,7 @@ namespace Messenger.ViewModels
         }
         private bool OnRegisterUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length != 0;
         #endregion
-
+        #endregion
         #region Имя пользователя
         private string _UserName = String.Empty;
         public string UserName
