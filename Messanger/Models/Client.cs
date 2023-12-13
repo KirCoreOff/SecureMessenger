@@ -26,7 +26,7 @@ namespace Messenger.Models
         static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, port);
         static Socket serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         static bool connectedToServer = true;
-        static string clientLogin = "";
+        static public string clientLogin = "";
         #endregion
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace Messenger.Models
         static public void StartClient()
         {
             serverSocket.Connect(ipEndPoint); // Подключение к серверу
-            Thread.Sleep(500);    
+            Thread.Sleep(500);
         }
         /// <summary>
         /// Метод общения с сервером
@@ -77,32 +77,32 @@ namespace Messenger.Models
                         }
                         Console.WriteLine($"Файл {fileName} получен успешно! Вес файлоа: {file.Length} Байт");
                         // Открытие полученного зашифрованного файла
-                        using (FileStream sourceStream = File.OpenRead($"1_{fileName}"))
+                    }
+                    using (FileStream file = File.OpenRead($"1_{fileName}"))
+                    {
+                        // Создание расшифрованного файла
+                        using (FileStream destinationStream = File.Create($"d_{fileName}"))
                         {
-                            // Создание расшифрованного файла
-                            using (FileStream destinationStream = File.Create($"d_{fileName}"))
+                            // Создаем буфер для чтения и записи данных
+                            byte[] buffer = new byte[BUFF_SIZE];
+                            int bytesRead;
+                            // Расшифровка байтов из полученного файла и запись их в созданный 
+                            while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0)
                             {
-                                // Создаем буфер для чтения и записи данных
-                                byte[] buffer = new byte[BUFF_SIZE];
-                                int bytesRead;
-                                // Расшифровка байтов из полученного файла и запись их в созданный 
-                                while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
-                                {
-                                    byte[] encryptedBytes = Kuznechik.Decrypt(buffer, bytesMasterKey);
-                                    destinationStream.Write(encryptedBytes, 0, bytesRead);
-                                }
-
+                                byte[] encryptedBytes = Kuznechik.Decrypt(buffer, bytesMasterKey);
+                                destinationStream.Write(encryptedBytes, 0, bytesRead);
                             }
                         }
+
                     }
                 }
                 else if (infoPackage[0] == "M") // Метка получения сообщения
-                {                 
+                {
                     Application.Current.Dispatcher.BeginInvoke(
                       DispatcherPriority.Background,
                       new Action(() => MainWindowViewModel.StoryMessages.Add(
                           new Message(infoPackage[1], infoPackage[2], infoPackage[3]))));
- 
+
                 }
             }
         }
@@ -127,13 +127,13 @@ namespace Messenger.Models
         /// <summary>
         /// Метод отправки файла серверу
         /// </summary>
-        static public void SendFile()
+        static public void SendFile(string filePath)
         {
             Console.WriteLine("Sending file...");
-            string filePath = "smile.jpg";
-            string encriptedFilePath = "encsmile.jpg";
-            string decriptedFilePath = "decsmile.jpg";
-            FileInfo file = new FileInfo(encriptedFilePath);
+            //string filePath = "smile.jpg";
+            FileInfo file = new FileInfo(filePath);
+            string encriptedFilePath = $"enc_{file.Name}";
+            string decriptedFilePath = $"dec_{file}";
             if (File.Exists(filePath))
             {
                 // Открытие файл на чтениен
@@ -153,7 +153,7 @@ namespace Messenger.Models
                         }
                     }
                 }
-                Console.WriteLine($"Файл {filePath} зашифрован в файл {encriptedFilePath}");
+                Console.WriteLine($"Файл {file.Name} зашифрован в файл {encriptedFilePath}");
 
                 //using (FileStream sourceStream = File.OpenRead(encriptedFilePath))
                 //{
@@ -176,7 +176,8 @@ namespace Messenger.Models
                 //serverSocket.SendFile(filePath);
 
 
-                byte[] buff = Encoding.UTF8.GetBytes($"F~{clientLogin}~{file.Name}~{file.Length}~{DateTime.Now}~"); // Служебрный пакет
+                byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes
+                    ($"F~{clientLogin}~{file.Name}~{file.Length}~{DateTime.Now}~"), bytesMasterKey); // Служебрный пакет
                 serverSocket.Send(buff);
                 serverSocket.SendFile(encriptedFilePath);
                 Console.WriteLine($"Файл отправлен успешно! Вес файла: {file.Length} Байт");

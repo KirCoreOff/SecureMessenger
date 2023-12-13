@@ -8,6 +8,9 @@ using System.Threading;
 using System.Collections.ObjectModel;
 using Messenger.Models;
 using System;
+using Microsoft.Win32;
+using System.Windows.Controls;
+using System.Linq;
 
 namespace Messenger.ViewModels
 {
@@ -18,9 +21,13 @@ namespace Messenger.ViewModels
         public ICommand AttachFileCommand { get; }
         private void OnAttachFileCommandExecuted(object p)
         {
-            Client.SendMessage(CurrentMessage);
-            //StoryMessages.Add(CurrentMessage);
-            CurrentMessage = string.Empty;
+            string filePath = "";
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            if (openFileDialog.ShowDialog() == true)
+            {
+                filePath = openFileDialog.FileName;
+            }
+            Client.SendFile(filePath);
         }
         private bool OnAttachFileCommandExecute(object p) => true;
         #endregion
@@ -28,7 +35,9 @@ namespace Messenger.ViewModels
         public ICommand SendMessageCommand { get; }
         private void OnSendMessageCommandExecuted(object p)
         {
-
+            Client.SendMessage(CurrentMessage);
+            StoryMessages.Add(new Message(Client.clientLogin, CurrentMessage, DateTime.Now.ToShortTimeString()));
+            CurrentMessage = string.Empty;
         }
         private bool OnSendMessageCommandExecute(object p) => !CurrentMessage.Equals(String.Empty);
         #endregion

@@ -120,8 +120,6 @@ namespace Messenger.ViewModels
                           */
                         ServerResponse = "Вы успешно зарегистрировались!";
                         ColorServerResponse = Brushes.Black;
-                        Thread th = new Thread(Client.ReadMessage);
-                        th.Start(); // Запуск потока на общение с сервером
                     }
                     break;
                 case 1:

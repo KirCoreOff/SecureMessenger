@@ -130,14 +130,18 @@ namespace Messenger
                         continue;
                     if (infoPackage[0] == "F") // Метка получения файла
                     {
-                        string fileName = infoPackage[1];
+                        Console.WriteLine("Получил сообщение");
+                        string fileName = infoPackage[2];
+                        SendMessage(Kuznechik.Encript(
+                            Encoding.UTF8.GetBytes($"M~{infoPackage[1]}~Отправил файл {infoPackage[2]}~{infoPackage[4]}~"),
+                            bytesMasterKey), (Socket)ClientSock);
                         int bytesReceived;
                         // Содание файла для записи передаваемых зашифрованных байтов файла
                         using (FileStream file = File.OpenWrite(fileName))
                         {
                             // Определение количества необходимых пакетов
-                            int packages = int.Parse(infoPackage[2]) / BUFF_SIZE;
-                            if (long.Parse(infoPackage[2]) % BUFF_SIZE != 0)
+                            int packages = int.Parse(infoPackage[3]) / BUFF_SIZE;
+                            if (long.Parse(infoPackage[3]) % BUFF_SIZE != 0)
                                 packages++;
                             // Запись зашифрованных байтов в файл
                             for (int i = 0; i < packages; i++)
@@ -179,8 +183,8 @@ namespace Messenger
                     }
                     else if (infoPackage[0] == "M") // Метка получения сообщения
                     {
-                        Console.WriteLine(infoPackage[1].Trim('\0'));
-                        byte[] encMessage = Kuznechik.Encript(Encoding.UTF8.GetBytes(infoPackage[1]), bytesMasterKey);
+                        Console.WriteLine(infoPackage[2].Trim('\0'));
+                        byte[] encMessage = Kuznechik.Encript(Encoding.UTF8.GetBytes(infoPackage[2]), bytesMasterKey);
                         string command = $"insert into messages(senderLogin, messageText, Timestamp)" +
                             $" values(\"{clientLogin}\", @encMessage, NOW())";
                         using (MySqlCommand cmd = new MySqlCommand(command, sql))
@@ -283,7 +287,7 @@ namespace Messenger
                                 ((Socket)ClientSock).Send(Kuznechik.Encript(
                                     Encoding.UTF8.GetBytes("S~0~"),
                                     bytesMasterKey));
-                                SendMessageHistory((Socket)ClientSock);
+                                //SendMessageHistory((Socket)ClientSock);
                             }
                             else
                             {
@@ -361,7 +365,8 @@ namespace Messenger
                 foreach (Socket client in authClient)
                 {
                     FileInfo file = new FileInfo(fileName);
-                    buff = Encoding.UTF8.GetBytes($"F~{file.Name}~{file.Length}~");
+                    buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"F~{file.Name}~{file.Length}~"),
+                        bytesMasterKey);
                     client.Send(buff);
                     client.SendFile(fileName);
                     Console.WriteLine($"Файл успешно отправлен! Вес файла: {file.Length} Байт");
