@@ -1,6 +1,6 @@
 ﻿using System.Windows;
 
-namespace Messanger.Views.Windows
+namespace Messenger.Views.Windows
 {
     public partial class LoginWindow : Window
     {

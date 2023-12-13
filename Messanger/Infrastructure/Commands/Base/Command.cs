@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Input;
 
-namespace Messanger.Infrastructure.Commands.Base
+namespace Messenger.Infrastructure.Commands.Base
 {
     internal abstract class Command : ICommand
     {

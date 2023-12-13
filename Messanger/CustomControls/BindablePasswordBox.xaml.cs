@@ -15,7 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace Messanger.CustomControls
+namespace Messenger.CustomControls
 {
     /// <summary>
     /// Логика взаимодействия для BindablePasswordBox.xaml

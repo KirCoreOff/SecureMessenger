@@ -1,13 +1,14 @@
-﻿using Messanger.Infrastructure.Commands;
-using Messanger.ViewModels.Base;
+﻿using Messenger.Infrastructure.Commands;
+using Messenger.ViewModels.Base;
 using System.Windows;
 using System.Collections.Generic;
 using System.Windows.Input;
 using Messenger;
 using System.Threading;
 using System.Collections.ObjectModel;
+using Messenger.Models;
 
-namespace Messanger.ViewModels
+namespace Messenger.ViewModels
 {
     internal class MainWindowViewModel : ViewModel
     {
@@ -40,13 +41,10 @@ namespace Messanger.ViewModels
         }
         #endregion
         #region История сообщений
-        static private ObservableCollection<string> _StoryMessages = new ObservableCollection<string>
-        {
-            "Hello",
-            "Salam",
-            "alekym asalam"
+        static private ObservableCollection<Message> _StoryMessages = new ObservableCollection<Message>
+        { new Message("login111", "Ukraine for gays", "12.12.2023")
         };
-        static public ObservableCollection<string> StoryMessages
+        static public ObservableCollection<Message> StoryMessages
         {
             get => _StoryMessages;
             //set => Set(ref _StoryMessages, value);

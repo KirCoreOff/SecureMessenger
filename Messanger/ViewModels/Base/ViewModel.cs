@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Messanger.ViewModels.Base
+namespace Messenger.ViewModels.Base
 {
     internal abstract class ViewModel : INotifyPropertyChanged
     {

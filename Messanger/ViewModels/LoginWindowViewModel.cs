@@ -1,5 +1,5 @@
-﻿using Messanger.Infrastructure.Commands;
-using Messanger.ViewModels.Base;
+﻿using Messenger.Infrastructure.Commands;
+using Messenger.ViewModels.Base;
 using Messenger;
 using System;
 using System.Net;
@@ -7,8 +7,9 @@ using System.Security;
 using System.Threading;
 using System.Windows.Input;
 using System.Windows.Media;
+using Messenger.Models;
 
-namespace Messanger.ViewModels
+namespace Messenger.ViewModels
 {
     internal class LoginWindowViewModel : ViewModel
     {

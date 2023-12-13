@@ -1,11 +1,11 @@
-﻿using Messanger.Infrastructure.Commands.Base;
+﻿using Messenger.Infrastructure.Commands.Base;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Messanger.Infrastructure.Commands
+namespace Messenger.Infrastructure.Commands
 {
     internal class LambdaCommand : Command
     {

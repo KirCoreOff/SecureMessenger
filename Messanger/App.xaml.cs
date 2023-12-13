@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Windows;
-using Messanger.Views.Windows;
+using Messenger.Views.Windows;
 
-namespace Messanger
+namespace Messenger
 {
     /// <summary>
     /// Interaction logic for App.xaml

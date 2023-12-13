@@ -6,11 +6,12 @@ using System;
 using System.IO;
 using System.Security;
 using System.Security.Cryptography.Xml;
-using Messanger.ViewModels;
+using Messenger.ViewModels;
 using System.Windows.Threading;
 using System.Windows;
+using Messenger.Models;
 
-namespace Messenger
+namespace Messenger.Models
 {
     static class Client
     {
@@ -25,6 +26,7 @@ namespace Messenger
         static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, port);
         static Socket serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         static bool connectedToServer = true;
+        static string clientLogin = "";
         #endregion
 
         /// <summary>
@@ -98,7 +100,8 @@ namespace Messenger
                 {                 
                     Application.Current.Dispatcher.BeginInvoke(
                       DispatcherPriority.Background,
-                      new Action(() => MainWindowViewModel.StoryMessages.Add(infoPackage[1])));
+                      new Action(() => MainWindowViewModel.StoryMessages.Add(
+                          new Message(infoPackage[1], infoPackage[2], infoPackage[3]))));
  
                 }
             }
@@ -109,7 +112,8 @@ namespace Messenger
         /// <param name="msg">Сообщение</param>
         static public void SendMessage(string msg)
         {
-            byte[] encryptedBytes = Kuznechik.Encript(Encoding.UTF8.GetBytes($"M~{msg}~"), bytesMasterKey);
+            byte[] encryptedBytes = Kuznechik.Encript(Encoding.UTF8.GetBytes(
+                $"M~{clientLogin}~{msg}~{DateTime.Now.ToShortTimeString()}~"), bytesMasterKey);
             try
             {
                 serverSocket.Send(encryptedBytes);
@@ -172,7 +176,7 @@ namespace Messenger
                 //serverSocket.SendFile(filePath);
 
 
-                byte[] buff = Encoding.UTF8.GetBytes($"F~{file.Name}~{file.Length}~"); // Служебрный пакет
+                byte[] buff = Encoding.UTF8.GetBytes($"F~{clientLogin}~{file.Name}~{file.Length}~{DateTime.Now}~"); // Служебрный пакет
                 serverSocket.Send(buff);
                 serverSocket.SendFile(encriptedFilePath);
                 Console.WriteLine($"Файл отправлен успешно! Вес файла: {file.Length} Байт");
@@ -223,6 +227,7 @@ namespace Messenger
             int authInfo = -1;
             string[] infoPackage = Encoding.UTF8.GetString
                     (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~');
+            clientLogin = login;
             if (infoPackage[0] == "S")
                 authInfo = int.Parse(infoPackage[1]);
             return authInfo;
