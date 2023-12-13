@@ -179,6 +179,7 @@
                     
                     Foreground="#FF2E65BF" />
             <Button Style="{StaticResource btn_LoginSugnup}"
+                    Command="{Binding RegisterUserCommand}"
                     Content="Зарегистироваться"
                     Width="220"
                     Height="40"

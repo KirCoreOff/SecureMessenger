@@ -4,11 +4,17 @@ using System.Text;
 using System.Threading;
 using System;
 using System.IO;
+using System.Security;
+using System.Security.Cryptography.Xml;
+using Messanger.ViewModels;
+using System.Windows.Threading;
+using System.Windows;
 
 namespace Messenger
 {
     static class Client
     {
+        #region Настроки
         static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
         static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
         const int BUFF_SIZE = 1024;
@@ -19,24 +25,25 @@ namespace Messenger
         static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, port);
         static Socket serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         static bool connectedToServer = true;
+        #endregion
+
         /// <summary>
         /// Метод запуска клиентского приложения
         /// </summary>
         static public void StartClient()
         {
             serverSocket.Connect(ipEndPoint); // Подключение к серверу
-            Thread.Sleep(500);
-            Thread th = new Thread(ReadMessage);
-            th.Start(); // Запуск потока на общение с сервером
+            Thread.Sleep(500);    
         }
         /// <summary>
         /// Метод общения с сервером
         /// </summary>
-        static void ReadMessage()
+        static public void ReadMessage()
         {
             while (connectedToServer)
             {
                 byte[] buff = new byte[BUFF_SIZE];
+                // Получение сообщения от клиента
                 try
                 {
                     serverSocket.Receive(buff);    // Получаем последовательность байтов из сокета в буфер buff
@@ -45,8 +52,9 @@ namespace Messenger
                 {
 
                 }
+                // Расшифровка и разбиение пакета на информациронные части 
                 string[] infoPackage = Encoding.UTF8.GetString
-                    (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~'); // Расшифровка и разбиение пакета на информациронные части 
+                    (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~');
 
                 if (infoPackage[0] == "F") // Метка получения файла
                 {
@@ -87,8 +95,11 @@ namespace Messenger
                     }
                 }
                 else if (infoPackage[0] == "M") // Метка получения сообщения
-                {
-                    Console.WriteLine(infoPackage[1].Trim('\0'));
+                {                 
+                    Application.Current.Dispatcher.BeginInvoke(
+                      DispatcherPriority.Background,
+                      new Action(() => MainWindowViewModel.StoryMessages.Add(infoPackage[1])));
+ 
                 }
             }
         }
@@ -168,26 +179,53 @@ namespace Messenger
             }
             else Console.WriteLine("Файл не найден");
         }
-
         /// <summary>
         /// Метод регистрации клиента в системе
         /// </summary>
-        static public void Registration()
+        /// <param name="login">Логин пользователя</param>
+        /// <param name="password">Пароль пользователя</param>
+        /// <returns>Результат регистрации: 0 - Регистрация успешна, 
+        /// 1 - Регистрация завершилась с ошибкой,
+        /// 2 - Пользователь с таким логином уже существует</returns>
+        static public int Registration(string login, string password)
         {
-            string login = "login122";
-            string password = "password122";
+            // Отправка логина и пароля в зашифрованном виде на сервер для регистрации
             byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"R~{login}~{password}~"), bytesMasterKey);
             serverSocket.Send(buff);
+            buff = new byte[BUFF_SIZE];
+            // Получение ответа от сервера
+            serverSocket.Receive(buff);
+            int regInfo = -1;
+            string[] infoPackage = Encoding.UTF8.GetString
+                    (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~');
+            if (infoPackage[0] == "S")
+                regInfo = int.Parse(infoPackage[1]);
+            return regInfo;
         }
         /// <summary>
         /// Метод аутентификации клиента в системе
         /// </summary>
-        static public void Auth()
+        /// <param name="login">Логин пользователя</param>
+        /// <param name="password">Пароль пользователя</param>
+        /// <returns>Результат аутентификации: 0 - Аутентификация успешна, 
+        /// 1 - Введен неверный пароль,
+        /// 2 - Пользователя с таким логином не существует</returns>
+        static public int Auth(string login, string password)
         {
-            string login = "login122";
-            string password = "password122";
+            //string login = "login122";
+            //string password = "password122";
+            // Отправка логина и пароля в зашифрованном виде на сервер для аутентификации
             byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"A~{login}~{password}~"), bytesMasterKey);
             serverSocket.Send(buff);
+            buff = new byte[BUFF_SIZE];
+            // Получение ответа от сервера
+            serverSocket.Receive(buff);
+            int authInfo = -1;
+            string[] infoPackage = Encoding.UTF8.GetString
+                    (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~');
+            if (infoPackage[0] == "S")
+                authInfo = int.Parse(infoPackage[1]);
+            return authInfo;
         }
         /// <summary>
         /// Метод отключения от сервера

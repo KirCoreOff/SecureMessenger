@@ -1,7 +1,10 @@
 ﻿using Messanger.Infrastructure.Commands;
 using Messanger.ViewModels.Base;
+using Messenger;
 using System;
+using System.Net;
 using System.Security;
+using System.Threading;
 using System.Windows.Input;
 using System.Windows.Media;
 
@@ -15,14 +18,16 @@ namespace Messanger.ViewModels
         private void OnLoginUserCommandExecuted(object p)
         {
             // Сюда код подключения
-            //Client.Auth();
+            int authInfo = Client.Auth(UserName, new NetworkCredential("", UserPassword).Password);
+            ChangeViewFromServerResponseAuth(authInfo);
         }
         private bool OnLoginUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length != 0;
         #endregion
         public ICommand RegisterUserCommand { get; }
         private void OnRegisterUserCommandExecuted(object p)
         {
-            // Сюда код регистрации
+            int regInfo = Client.Registration(UserName, new NetworkCredential("", UserPassword).Password);
+            ChangeViewFromServerResponseRegistration(regInfo);
         }
         private bool OnRegisterUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length != 0;
         #endregion
@@ -68,8 +73,8 @@ namespace Messanger.ViewModels
         }
         #endregion
 
-        private void ChangeViewFromServerResponse(int responseCode)
-        {            
+        private void ChangeViewFromServerResponseAuth(int responseCode)
+        {
             switch (responseCode)
             {
                 case 0:
@@ -79,17 +84,20 @@ namespace Messanger.ViewModels
                         ColorServerResponse = Brushes.<Какой-нибудь цвет>;
                         ColorServerResponse = Brushes.Azure;                          
                           */
+                        ServerResponse = "Вы успешно авторизировались!";
+                        ColorServerResponse = Brushes.Black;
+
                         IsViewVisible = false;
                     }
                     break;
                 case 1:
                     {
-
+                        ServerResponse = "Вы ввели неверный пароль";
                     }
                     break;
                 case 2:
                     {
-
+                        ServerResponse = "Такого пользователя не существует";
                     }
                     break;
                 default:
@@ -97,11 +105,36 @@ namespace Messanger.ViewModels
             }
         }
 
-        private void StartMainView()
+        private void ChangeViewFromServerResponseRegistration(int responseCode)
         {
-            var mainView = new MainWindow();
-            mainView.Show();
-
+            switch (responseCode)
+            {
+                case 0:
+                    {
+                        /* Значения для покраски
+                        ColorServerResponse = Brushes.Red;
+                        ColorServerResponse = Brushes.<Какой-нибудь цвет>;
+                        ColorServerResponse = Brushes.Azure;                          
+                          */
+                        ServerResponse = "Вы успешно зарегистрировались!";
+                        ColorServerResponse = Brushes.Black;
+                        Thread th = new Thread(Client.ReadMessage);
+                        th.Start(); // Запуск потока на общение с сервером
+                    }
+                    break;
+                case 1:
+                    {
+                        ServerResponse = "Регистрация завершилась с ошибкой";
+                    }
+                    break;
+                case 2:
+                    {
+                        ServerResponse = "Пользователь с таким логином уже существует";
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
 
         public LoginWindowViewModel()
@@ -111,7 +144,7 @@ namespace Messanger.ViewModels
             RegisterUserCommand = new LambdaCommand(OnRegisterUserCommandExecuted, OnRegisterUserCommandExecute);
             #endregion
 
-            //Client.StartClient();
+            Client.StartClient();
         }
     }
 }

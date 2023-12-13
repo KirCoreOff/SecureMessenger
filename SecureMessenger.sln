@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SecureMessenger", "SecureMe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client", "Client\Client.csproj", "{B4D11AE2-FE3C-41B9-8183-C9ED41878221}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Messanger", "Messanger\Messanger.csproj", "{5C588E6F-A656-4BB7-AE19-1790509765BB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Messenger", "Messanger\Messenger.csproj", "{5C588E6F-A656-4BB7-AE19-1790509765BB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

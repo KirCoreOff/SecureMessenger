@@ -3,6 +3,9 @@ using Messanger.ViewModels.Base;
 using System.Windows;
 using System.Collections.Generic;
 using System.Windows.Input;
+using Messenger;
+using System.Threading;
+using System.Collections.ObjectModel;
 
 namespace Messanger.ViewModels
 {
@@ -21,11 +24,13 @@ namespace Messanger.ViewModels
         public ICommand AttachFileCommand { get; }
         private void OnAttachFileCommandExecuted(object p)
         {
-            // Suda code
+            Client.SendMessage(CurrentMessage);
+            //StoryMessages.Add(CurrentMessage);
+            CurrentMessage = string.Empty;
         }
         private bool OnAttachFileCommandExecute(object p) => true;
         #endregion
-
+        #endregion
         #region Название окна
         private string _TitleWindow = "Secure Messanger";
         public string TitleWindow
@@ -35,16 +40,16 @@ namespace Messanger.ViewModels
         }
         #endregion
         #region История сообщений
-        private List<string> _StoryMessages = new List<string>
+        static private ObservableCollection<string> _StoryMessages = new ObservableCollection<string>
         {
             "Hello",
             "Salam",
             "alekym asalam"
         };
-        public List<string> StoryMessages
+        static public ObservableCollection<string> StoryMessages
         {
             get => _StoryMessages;
-            set => Set(ref _StoryMessages, value);
+            //set => Set(ref _StoryMessages, value);
         }
         #endregion
         #region Сообщение текущего пользователя
@@ -70,6 +75,8 @@ namespace Messanger.ViewModels
             #region Commands
             AttachFileCommand = new LambdaCommand(OnAttachFileCommandExecuted, OnAttachFileCommandExecute);
             #endregion
+            Thread th = new Thread(Client.ReadMessage);
+            th.Start(); // Запуск потока на общение с сервером
         }
     }
 }
