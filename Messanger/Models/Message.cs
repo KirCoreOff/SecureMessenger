@@ -25,6 +25,7 @@ namespace Messenger.Models
         {
             get { return timeStamp; }
         }
+
         public Message(string sender, string textMessage, string timeStamp)
         {
             this.sender = sender;

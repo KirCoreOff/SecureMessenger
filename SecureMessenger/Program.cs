@@ -13,6 +13,7 @@ using MySql.Data.MySqlClient;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 using System.Linq;
 using Org.BouncyCastle.Cms;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Messenger
 {
@@ -282,7 +283,7 @@ namespace Messenger
                                 ((Socket)ClientSock).Send(Kuznechik.Encript(
                                     Encoding.UTF8.GetBytes("S~0~"),
                                     bytesMasterKey));
-                                //SendMessageHistory((Socket)ClientSock);
+                                SendMessageHistory((Socket)ClientSock);
                             }
                             else
                             {
@@ -313,7 +314,7 @@ namespace Messenger
             /// <param name="clientSocket">клиентский сокет</param>
             static void SendMessageHistory(Socket clientSocket)
             {
-                string command = "SELECT senderLogin, messageText, filePath timestamp FROM Messages ORDER BY timestamp DESC LIMIT 5;";
+                string command = "(SELECT  messageId, senderLogin, messageText, filePath, DATE_FORMAT(timestamp, '%H:%i') AS timestamp FROM Messages ORDER BY messageId DESC  LIMIT 5) ORDER BY messageId ASC;";
                 // Получение всех записей  в бд
                 using (MySqlCommand cmd = new MySqlCommand(command, sql))
                 {
@@ -322,16 +323,24 @@ namespace Messenger
                         while (reader.Read())
                         {
                             string senderLogin = reader.GetString("senderLogin");
-                            //byte[] encMessage = reader.GetBytes("messageText");
-                            byte[] messageTextBytes = new byte[reader.GetBytes(reader.GetOrdinal("messageText"), 0, null, 0, int.MaxValue)];
-                            reader.GetBytes(reader.GetOrdinal("messageText"), 0, messageTextBytes, 0, messageTextBytes.Length);
-                            string message = Encoding.UTF8.GetString(Kuznechik.Decrypt(
-                                messageTextBytes, bytesMasterKey));
-                            string filePath = Encoding.UTF8.GetString(Kuznechik.Decrypt(
-                                Encoding.UTF8.GetBytes(reader.GetString("filePath")), bytesMasterKey));
+                            string message = "";
+                            string filePath = "";
+                            if (!reader.IsDBNull(reader.GetOrdinal("messageText")))
+                            {
+                                byte[] messageTextBytes = new byte[reader.GetBytes(reader.GetOrdinal("messageText"), 0, null, 0, int.MaxValue)];
+                                reader.GetBytes(reader.GetOrdinal("messageText"), 0, messageTextBytes, 0, messageTextBytes.Length);
+                                message = Encoding.UTF8.GetString(Kuznechik.Decrypt(
+                                    messageTextBytes, bytesMasterKey)).Trim('\0');
+                            }
+                            else
+                            {
+                                filePath = Encoding.UTF8.GetString(Kuznechik.Decrypt(
+                                    Encoding.UTF8.GetBytes(reader.GetString("filePath")), bytesMasterKey)).Trim('\0');
+                            }    
+
                             string timestamp = reader.GetString("timestamp");
                             clientSocket.Send(Kuznechik.Encript(
-                                Encoding.UTF8.GetBytes($"M~{senderLogin} {message}{filePath} {timestamp}~"),
+                                Encoding.UTF8.GetBytes($"M~{senderLogin}~{message}{filePath}~{timestamp}~"),
                                 bytesMasterKey));
                             Thread.Sleep(100);
                         }
