@@ -8,7 +8,8 @@
         mc:Ignorable="d"
         Title="{Binding TitleWindow}"
         Height="800"
-        Width="500">
+        Width="500"
+        x:Name="MainWindowWPF">
     <Window.DataContext>
         <vm:MainWindowViewModel />
     </Window.DataContext>
@@ -32,21 +33,55 @@
             <RowDefinition Height="40" />
         </Grid.RowDefinitions>
         <ListBox Grid.Row="0"
+                 x:Name="ParentListBox"
+                 Margin="10"
                  ItemsSource="{Binding StoryMessages}"
                  Background="{x:Null}"
-                 FontSize="26"
+                 FontSize="22"
                  VerticalAlignment="Bottom"
-                 Foreground="DarkGray" 
-                 BorderThickness="0"/>
+                 HorizontalContentAlignment="Stretch"
+                 HorizontalAlignment="Stretch"
+                 Foreground="DarkGray"
+                 BorderThickness="0"
+                 MaxWidth="{Binding Path=ActualWidth, ElementName=MainWindowWPF}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid MaxWidth="{Binding Path=ActualWidth, ElementName=ParentListBox}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.2*" MaxWidth="160" />
+                            <ColumnDefinition Width="0.6*" />
+                            <ColumnDefinition Width="0.2*" MaxWidth="80"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Path=Sender}"
+                                   Grid.Column="0"
+                                   TextWrapping="Wrap"
+                                   HorizontalAlignment="Left"/>
+                        <TextBlock Text="{Binding Path=TextMessage}"
+                                   Margin="10,0,0,0"
+                                   Grid.Column="1"
+                                   TextWrapping="WrapWithOverflow"
+                                   HorizontalAlignment="Left" />
+                        <TextBlock Text="{Binding Path=TimeStamp}"
+                                   Grid.Column="2"
+                                   HorizontalAlignment="Right" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.8*" />
-                <ColumnDefinition Width="0.2*" />
+                <ColumnDefinition Width="0.2*" MaxWidth="80" />
             </Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
                      Margin="20"
-                     Text="{Binding CurrentMessage}"
-                     FontSize="24" />
+                     Text="{Binding CurrentMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     FontSize="24">
+                <TextBox.InputBindings>
+                    <KeyBinding Command="{Binding SendMessageCommand}"
+                                Key="Enter" />
+                </TextBox.InputBindings>
+            </TextBox>
             <Button Grid.Column="1"
                     Command="{Binding AttachFileCommand}"
                     Margin="20" />
@@ -55,10 +90,5 @@
                    Margin="20, 5"
                    Text="{Binding Status}"
                    FontSize="16" />
-        <!--<Button Content="ABCDEF"
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        Background="Gray"
-        Command="{Binding CloseApplicationCommmand}" /> -->
     </Grid>
 </Window>

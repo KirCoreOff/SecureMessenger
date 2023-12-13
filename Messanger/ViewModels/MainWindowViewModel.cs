@@ -1,4 +1,4 @@
-﻿using Messenger.Infrastructure.Commands;
+using Messenger.Infrastructure.Commands;
 using Messenger.ViewModels.Base;
 using System.Windows;
 using System.Collections.Generic;
@@ -7,20 +7,13 @@ using Messenger;
 using System.Threading;
 using System.Collections.ObjectModel;
 using Messenger.Models;
+using System;
 
 namespace Messenger.ViewModels
 {
     internal class MainWindowViewModel : ViewModel
     {
         #region Commands
-        #region CloseApplicationCommand
-        public ICommand CloseApplicationCommmand { get; }
-        private void OnCloseApplicationCommandExecuted(object p)
-        {
-            Application.Current.Shutdown();
-        }
-        private bool CanCloseApplicationCommandExecute(object p) => true;
-        #endregion
         #region Загрузка файла
         public ICommand AttachFileCommand { get; }
         private void OnAttachFileCommandExecuted(object p)
@@ -31,7 +24,16 @@ namespace Messenger.ViewModels
         }
         private bool OnAttachFileCommandExecute(object p) => true;
         #endregion
+        #region Отправка сообщения
+        public ICommand SendMessageCommand { get; }
+        private void OnSendMessageCommandExecuted(object p)
+        {
+
+        }
+        private bool OnSendMessageCommandExecute(object p) => !CurrentMessage.Equals(String.Empty);
         #endregion
+        #endregion
+
         #region Название окна
         private string _TitleWindow = "Secure Messanger";
         public string TitleWindow
@@ -42,7 +44,7 @@ namespace Messenger.ViewModels
         #endregion
         #region История сообщений
         static private ObservableCollection<Message> _StoryMessages = new ObservableCollection<Message>
-        { new Message("login111", "Ukraine for gays", "12.12.2023")
+        { new Message("login111", "Ukraine for gays, Ukraine for gays", "23:15")
         };
         static public ObservableCollection<Message> StoryMessages
         {
@@ -51,7 +53,7 @@ namespace Messenger.ViewModels
         }
         #endregion
         #region Сообщение текущего пользователя
-        private string _CurrentMessage;
+        private string _CurrentMessage = String.Empty;
         public string CurrentMessage
         {
             get => _CurrentMessage;
@@ -72,6 +74,7 @@ namespace Messenger.ViewModels
         {
             #region Commands
             AttachFileCommand = new LambdaCommand(OnAttachFileCommandExecuted, OnAttachFileCommandExecute);
+            SendMessageCommand = new LambdaCommand(OnSendMessageCommandExecuted, OnSendMessageCommandExecute);
             #endregion
             Thread th = new Thread(Client.ReadMessage);
             th.Start(); // Запуск потока на общение с сервером
