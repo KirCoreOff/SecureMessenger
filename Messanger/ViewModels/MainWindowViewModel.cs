@@ -28,15 +28,14 @@ namespace Messenger.ViewModels
         private void OnAttachFileCommandExecuted(object p)
         {
             string filePath = "";
-            Client.DisconnectFromServer();
-            //OpenFileDialog openFileDialog = new OpenFileDialog();
-            //if (openFileDialog.ShowDialog() == true)
-            //{
-            //    filePath = openFileDialog.FileName;
-            //    if (filePath != null)
-            //        Task.Run(()=>Client.SendFile(filePath, this));
-            //    ProgressBarValue = 50;
-            //}
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            if (openFileDialog.ShowDialog() == true)
+            {
+                filePath = openFileDialog.FileName;
+                if (filePath != null)
+                    Task.Run(() => Client.SendFile(filePath, this));
+                ProgressBarValue = 50;
+            }
         }
         private bool OnAttachFileCommandExecute(object p) => true;
         #endregion

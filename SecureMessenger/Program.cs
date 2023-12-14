@@ -1,19 +1,14 @@
 ﻿using System.Net.Sockets;
 using System.Net;
-using System.Numerics;
-using System.Security.Cryptography;
 using System.Text;
-using static System.Net.Mime.MediaTypeNames;
-using System.Net.Http;
 using System;
 using System.IO;
 using System.Threading;
 using System.Collections.Generic;
 using MySql.Data.MySqlClient;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+
 using System.Linq;
-using Org.BouncyCastle.Cms;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
+
 
 namespace Messenger
 {
@@ -34,7 +29,7 @@ namespace Messenger
             static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 11000);
             static Socket sListener = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-            static private List<Thread> threads = new List<Thread>(); // Список потоков для работы с клиентами
+            static public List<Thread> threads = new List<Thread>(); // Список потоков для работы с клиентами
             static private Dictionary<Socket, bool> clients = new Dictionary<Socket, bool>(); // Клиентские сокеты с меткой авторизации
 
             static MySqlConnection sql;
@@ -360,6 +355,15 @@ namespace Messenger
         static void Main(string[] args)
         {
             Server.StartServer(); // Запуск сервера
+            AppDomain.CurrentDomain.ProcessExit += new EventHandler(ShutDown);
+        }
+        static void ShutDown(object sender, EventArgs e)
+        {
+            Environment.Exit(0);
+            //foreach (var thread in Server.threads)
+            //{
+            //    thread.();
+            //}
         }
     }
 }
