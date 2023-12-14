@@ -156,7 +156,7 @@ namespace Messenger.Models
                 }
                 Console.WriteLine($"Файл {file.Name} зашифрован в файл {encriptedFilePath}");
                 byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes
-                    ($"F~{clientLogin}~{file.Name}~{file.Length}~{DateTime.Now}~"), bytesMasterKey); // Служебрный пакет
+                    ($"F~{clientLogin}~{file.Name}~{file.Length}~{DateTime.Now.ToShortTimeString()}~"), bytesMasterKey); // Служебрный пакет
                 serverSocket.Send(buff);
                 serverSocket.SendFile(encriptedFilePath);
                 File.Delete(encriptedFilePath);
