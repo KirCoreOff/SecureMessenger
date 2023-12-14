@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using Messenger.ViewModels;
 using Messenger.Views.Windows;
 
 namespace Messenger
@@ -18,6 +19,7 @@ namespace Messenger
                 if (loginView.IsVisible == false && loginView.IsLoaded)
                 {
                     var mainView = new MainWindow();
+                    mainView.Closing += MainWindowViewModel.OnWindowClosing;
                     mainView.Show();
                     loginView.Close();
                 }

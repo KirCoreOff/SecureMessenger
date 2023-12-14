@@ -48,14 +48,16 @@
                 <DataTemplate>
                     <Grid MaxWidth="{Binding Path=ActualWidth, ElementName=ParentListBox}">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="0.2*" MaxWidth="160" />
+                            <ColumnDefinition Width="0.2*"
+                                              MaxWidth="160" />
                             <ColumnDefinition Width="0.6*" />
-                            <ColumnDefinition Width="0.2*" MaxWidth="80"/>
+                            <ColumnDefinition Width="0.2*"
+                                              MaxWidth="80" />
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding Path=Sender}"
                                    Grid.Column="0"
                                    TextWrapping="Wrap"
-                                   HorizontalAlignment="Left"/>
+                                   HorizontalAlignment="Left" />
                         <TextBlock Text="{Binding Path=TextMessage}"
                                    Margin="10,0,0,0"
                                    Grid.Column="1"
@@ -71,7 +73,8 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="0.8*" />
-                <ColumnDefinition Width="0.2*" MaxWidth="80" />
+                <ColumnDefinition Width="0.2*"
+                                  MaxWidth="80" />
             </Grid.ColumnDefinitions>
             <TextBox Grid.Column="0"
                      Margin="20"
@@ -86,9 +89,21 @@
                     Command="{Binding AttachFileCommand}"
                     Margin="20" />
         </Grid>
-        <TextBlock Grid.Row="2"
-                   Margin="20, 5"
-                   Text="{Binding Status}"
-                   FontSize="16" />
+        <Grid Grid.Row="2"
+              Margin="0, 5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="240" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock HorizontalAlignment="Left"
+                       Grid.Column="0"
+                       Margin="10, 5"
+                       Text="{Binding Status}"
+                       FontSize="18" />
+            <ProgressBar Value="{Binding ProgressBarValue}"
+                         Grid.Column="1"
+                         MinWidth="260"
+                         Margin="10, 0" />
+        </Grid>
     </Grid>
 </Window>

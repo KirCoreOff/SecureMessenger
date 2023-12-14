@@ -1,7 +1,5 @@
 using Messenger.Infrastructure.Commands;
 using Messenger.ViewModels.Base;
-using System.Windows;
-using System.Collections.Generic;
 using System.Windows.Input;
 using Messenger;
 using System.Threading;
@@ -9,13 +7,19 @@ using System.Collections.ObjectModel;
 using Messenger.Models;
 using System;
 using Microsoft.Win32;
-using System.Windows.Controls;
-using System.Linq;
+using System.ComponentModel;
+using System.Windows;
 
 namespace Messenger.ViewModels
 {
     internal class MainWindowViewModel : ViewModel
     {
+        #region Завершение приложения (Не трогать)
+        static public void OnWindowClosing(object sender, CancelEventArgs e)
+        {
+            Application.Current.Shutdown();
+        }
+        #endregion
         #region Commands
         #region Загрузка файла
         public ICommand AttachFileCommand { get; }
@@ -54,12 +58,12 @@ namespace Messenger.ViewModels
         #endregion
         #region История сообщений
         static private ObservableCollection<Message> _StoryMessages = new ObservableCollection<Message>
-        { new Message("login111", "Ukraine for gays, Ukraine for gays", "23:15")
+        { 
+            new Message("login111", "Ukraine for gays, Ukraine for gays", "23:15")
         };
         static public ObservableCollection<Message> StoryMessages
         {
             get => _StoryMessages;
-            //set => Set(ref _StoryMessages, value);
         }
         #endregion
         #region Сообщение текущего пользователя
@@ -71,11 +75,19 @@ namespace Messenger.ViewModels
         }
         #endregion
         #region Статус
-        private string _Status;
+        private string _Status = "Получение файла...";
         public string Status
         {
             get => _Status;
             set => Set(ref _Status, value);
+        }
+        #endregion
+        #region Прогресс бар
+        private double _ProgressBarValue = 0;
+        public double ProgressBarValue
+        {
+            get => _ProgressBarValue;
+            set => Set(ref _ProgressBarValue, value);
         }
         #endregion
 
