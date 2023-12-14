@@ -10,6 +10,7 @@ using Messenger.ViewModels;
 using System.Windows.Threading;
 using System.Windows;
 using Messenger.Models;
+using System.Windows.Controls;
 
 namespace Messenger.Models
 {
@@ -27,6 +28,9 @@ namespace Messenger.Models
         static Socket serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         static bool connectedToServer = true;
         static public string clientLogin = "";
+        static Kuznechik kuznechik = new Kuznechik(bytesMasterKey);
+
+
         #endregion
 
         /// <summary>
@@ -40,7 +44,7 @@ namespace Messenger.Models
         /// <summary>
         /// Метод общения с сервером
         /// </summary>
-        static public void ReadMessage()
+        static public void ReadMessage(MainWindowViewModel mainVM)
         {
             while (connectedToServer)
             {
@@ -56,13 +60,14 @@ namespace Messenger.Models
                 }
                 // Расшифровка и разбиение пакета на информациронные части 
                 string[] infoPackage = Encoding.UTF8.GetString
-                    (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~');
+                    (kuznechik.Decrypt(buff)).Trim('\0').Split('~');
 
                 if (infoPackage[0] == "F") // Метка получения файла
                 {
                     string fileName = infoPackage[1];
                     string encryptedFile = $"enc_{fileName}";
                     int bytesReceived;
+                    mainVM.Status = "Получение файла";
                     // Содание файла для записи передаваемых зашифрованных байтов файла
                     using (FileStream file = File.OpenWrite(encryptedFile))
                     {
@@ -75,33 +80,40 @@ namespace Messenger.Models
                         {
                             bytesReceived = serverSocket.Receive(buff);
                             file.Write(buff, 0, bytesReceived);
+                            mainVM.ProgressBarValue = (double)i / packages;
                         }
                         Console.WriteLine($"Файл {fileName} получен успешно! Вес файлоа: {file.Length} Байт");
                         // Открытие полученного зашифрованного файла
                     }
+                    FileInfo fileInfo = new FileInfo(encryptedFile); 
                     using (FileStream file = File.OpenRead(encryptedFile))
                     {
+                        mainVM.Status = "Файл расшифровывается";
                         // Создание расшифрованного файла
                         using (FileStream destinationStream = File.Create($"{fileName}"))
                         {
                             // Создаем буфер для чтения и записи данных
                             byte[] buffer = new byte[BUFF_SIZE];
                             int bytesRead;
+                            int i = 0;
                             // Расшифровка байтов из полученного файла и запись их в созданный 
                             while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0)
                             {
-                                byte[] encryptedBytes = Kuznechik.Decrypt(buffer, bytesMasterKey);
+                                byte[] encryptedBytes = kuznechik.Decrypt(buffer);
                                 destinationStream.Write(encryptedBytes, 0, bytesRead);
+                                mainVM.ProgressBarValue = 1024d * ++i / fileInfo.Length * 100;
                             }
                         }
                     }
+                    mainVM.Status = "";
+                    mainVM.ProgressBarValue = 0;
                     File.Delete(encryptedFile);
                 }
                 else if (infoPackage[0] == "M") // Метка получения сообщения
                 {
                     Application.Current.Dispatcher.BeginInvoke(
                       DispatcherPriority.Background,
-                      new Action(() => MainWindowViewModel.StoryMessages.Add(
+                      new Action(() => mainVM.StoryMessages.Add(
                           new Message(infoPackage[1], infoPackage[2], infoPackage[3]))));
 
                 }
@@ -113,8 +125,8 @@ namespace Messenger.Models
         /// <param name="msg">Сообщение</param>
         static public void SendMessage(string msg)
         {
-            byte[] encryptedBytes = Kuznechik.Encript(Encoding.UTF8.GetBytes(
-                $"M~{clientLogin}~{msg}~{DateTime.Now.ToShortTimeString()}~"), bytesMasterKey);
+            byte[] encryptedBytes = kuznechik.Encript(Encoding.UTF8.GetBytes(
+                $"M~{clientLogin}~{msg}~{DateTime.Now.ToShortTimeString()}~"));
             try
             {
                 serverSocket.Send(encryptedBytes);
@@ -128,7 +140,7 @@ namespace Messenger.Models
         /// <summary>
         /// Метод отправки файла серверу
         /// </summary>
-        static public void SendFile(string filePath)
+        static public void SendFile(string filePath, MainWindowViewModel mainVM)
         {
             Console.WriteLine("Sending file...");
             //string filePath = "smile.jpg";
@@ -144,26 +156,37 @@ namespace Messenger.Models
                     using (FileStream destinationStream = File.Create(encriptedFilePath))
                     {
                         // Создаем буфер для чтения и записи данных
+                        //Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
+                        //    () => new Thread(() => { mainVM.Status = "Файл шифруется"; }).Start());
+                        mainVM.Status = "Файл шифруется";
                         byte[] buffer = new byte[BUFF_SIZE];
                         int bytesRead;
                         // Процесс шифрования байтов файла
+                        int i = 0;
                         while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
                         {
-                            byte[] encryptedBytes = Kuznechik.Encript(buffer, bytesMasterKey);
+                            byte[] encryptedBytes = kuznechik.Encript(buffer);
                             destinationStream.Write(encryptedBytes, 0, bytesRead);
+                            //Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
+                            //    () => new Thread(() => { mainVM.ProgressBarValue = 1024 * ++i / file.Length; }).Start());
+                            mainVM.ProgressBarValue = 1024d * ++i / file.Length * 100;
                         }
+                        mainVM.Status = "";
+                        mainVM.ProgressBarValue = 0;
                     }
                 }
                 Console.WriteLine($"Файл {file.Name} зашифрован в файл {encriptedFilePath}");
-                byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes
-                    ($"F~{clientLogin}~{file.Name}~{file.Length}~{DateTime.Now.ToShortTimeString()}~"), bytesMasterKey); // Служебрный пакет
+                byte[] buff = kuznechik.Encript(Encoding.UTF8.GetBytes
+                    ($"F~{clientLogin}~{file.Name}~{file.Length}~{DateTime.Now.ToShortTimeString()}~")); // Служебрный пакет
                 serverSocket.Send(buff);
+                mainVM.Status = "Файл отправляется...";
                 serverSocket.SendFile(encriptedFilePath);
+                mainVM.Status = "Файл отправлен!";
                 File.Delete(encriptedFilePath);
                 Console.WriteLine($"Файл отправлен успешно! Вес файла: {file.Length} Байт");
                 Application.Current.Dispatcher.BeginInvoke(
                       DispatcherPriority.Background,
-                      new Action(() => MainWindowViewModel.StoryMessages.Add(
+                      new Action(() => mainVM.StoryMessages.Add(
                           new Message(clientLogin, $"Вы отправили файл {file.Name}", DateTime.Now.ToShortTimeString()))));
             }
             else Console.WriteLine("Файл не найден");
@@ -179,14 +202,14 @@ namespace Messenger.Models
         static public int Registration(string login, string password)
         {
             // Отправка логина и пароля в зашифрованном виде на сервер для регистрации
-            byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"R~{login}~{password}~"), bytesMasterKey);
+            byte[] buff = kuznechik.Encript(Encoding.UTF8.GetBytes($"R~{login}~{password}~"));
             serverSocket.Send(buff);
             buff = new byte[BUFF_SIZE];
             // Получение ответа от сервера
             serverSocket.Receive(buff);
             int regInfo = -1;
             string[] infoPackage = Encoding.UTF8.GetString
-                    (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~');
+                    (kuznechik.Decrypt(buff)).Trim('\0').Split('~');
             if (infoPackage[0] == "S")
                 regInfo = int.Parse(infoPackage[1]);
             return regInfo;
@@ -204,14 +227,14 @@ namespace Messenger.Models
             //string login = "login122";
             //string password = "password122";
             // Отправка логина и пароля в зашифрованном виде на сервер для аутентификации
-            byte[] buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"A~{login}~{password}~"), bytesMasterKey);
+            byte[] buff = kuznechik.Encript(Encoding.UTF8.GetBytes($"A~{login}~{password}~"));
             serverSocket.Send(buff);
             buff = new byte[BUFF_SIZE];
             // Получение ответа от сервера
             serverSocket.Receive(buff);
             int authInfo = -1;
             string[] infoPackage = Encoding.UTF8.GetString
-                    (Kuznechik.Decrypt(buff, bytesMasterKey)).Trim('\0').Split('~');
+                    (kuznechik.Decrypt(buff)).Trim('\0').Split('~');
             clientLogin = login;
             if (infoPackage[0] == "S")
                 authInfo = int.Parse(infoPackage[1]);
@@ -222,11 +245,8 @@ namespace Messenger.Models
         /// </summary>
         static public void DisconnectFromServer()
         {
-            byte[] encryptedBytes = Kuznechik.Encript(Encoding.UTF8.GetBytes($"Q~"), bytesMasterKey);
-            serverSocket.Send(encryptedBytes);
             connectedToServer = false;
             serverSocket.Close();
-            Console.WriteLine("Вы отключились от сервера");
         }
     }
 }

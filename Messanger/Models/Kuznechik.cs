@@ -3,15 +3,15 @@ using System.Linq;
 
 namespace Messenger
 {
-    static class Kuznechik
+    class Kuznechik
     {
 
-        static byte[][] iterationConst = new byte[32][]; // массив итерационных констант
-        static byte[][] iterationKey = new byte[10][]; // массив итерационных ключей
-        static byte[] LVec = new byte[] // маccив
+        byte[][] iterationConst = new byte[32][]; // массив итерационных констант
+        byte[][] iterationKey = new byte[10][]; // массив итерационных ключей
+        byte[] LVec = new byte[] // маccив
         {148, 32, 133, 16, 194, 192, 1, 251, 1, 192, 194, 16, 133, 32, 148, 1};
 
-        static readonly byte[] Pi = new byte[256] // таблица для прямого нелинейного преобразования
+        readonly byte[] Pi = new byte[256] // таблица для прямого нелинейного преобразования
         {
             252, 238, 221, 17, 207, 110, 49, 22, 251, 196, 250, 218, 35, 197, 4, 77,
             233, 119, 240, 219, 147, 46, 153, 186, 23, 54, 241, 187, 20, 205, 95, 193,
@@ -31,7 +31,7 @@ namespace Messenger
             89, 166, 116, 210, 230, 244, 180, 192, 209, 102, 175, 194, 57, 75, 99, 182
         };
 
-        static readonly byte[] Pi_Reverse = new byte[256] // таблица для обратного нелинейного преобразования
+        readonly byte[] Pi_Reverse = new byte[256] // таблица для обратного нелинейного преобразования
         {
             165, 45, 50, 143, 14, 48, 56, 192, 84, 230, 158, 57, 85, 126, 82, 145,
             100, 3, 87, 90, 28, 96, 7, 24, 33, 114, 168, 209, 41, 198, 164, 63,
@@ -51,7 +51,13 @@ namespace Messenger
             18, 26, 72, 104, 245, 129, 139, 199, 214, 32, 10, 8, 0, 76, 215, 116
         };
 
-        static private byte[] LinearTransformation(byte[] data) //Линейное преобрзование
+        public Kuznechik(byte[] masterKey)
+        {
+            masterKey = KeyLenghtResizeTo32Byte(masterKey);
+            KeyGeneration(masterKey);
+        }
+
+        private byte[] LinearTransformation(byte[] data) //Линейное преобрзование
         {
             for (int j = 0; j < 16; j++)
             {
@@ -65,7 +71,7 @@ namespace Messenger
             return data;
         }
         /* Обратное линейное L преобразование */
-        static private byte[] ReversLinearTransformation(byte[] data)
+        private byte[] ReversLinearTransformation(byte[] data)
         {
             for (int j = 0; j < 16; j++)
             {
@@ -81,7 +87,7 @@ namespace Messenger
         }
 
         /* Нелинейное S преобразование */
-        static private byte[] NonlinearTransformation(byte[] input, bool flag)
+        private byte[] NonlinearTransformation(byte[] input, bool flag)
         {
             byte[] output = new byte[16];
             for (int i = 0; i < 16; i++)
@@ -95,7 +101,7 @@ namespace Messenger
         }
 
         /* Линейное L преобразование */
-        static private byte MultInGoalaField(byte a, byte b)
+        private byte MultInGoalaField(byte a, byte b)
         {
             byte p = 0;
             byte hi_bit;
@@ -113,7 +119,7 @@ namespace Messenger
         }
 
         /* Сложение_по_модулю_2 */
-        static private byte[] Xor(byte[] input1, byte[] input2) 
+        private byte[] Xor(byte[] input1, byte[] input2) 
         {
             byte[] output = new byte[16];
             for (int i = 0; i < 16; i++)           
@@ -122,7 +128,7 @@ namespace Messenger
         }
 
         /* Функция F сети Фейстиля */
-        static private byte[] F(byte[] key, byte[] roundC)
+        private byte[] F(byte[] key, byte[] roundC)
         {
             key = Xor(key, roundC);
             key = NonlinearTransformation(key, false);
@@ -130,7 +136,7 @@ namespace Messenger
         }
 
         /* Изменение размера ключа до 32 символов */
-        static private byte[] KeyLenghtResizeTo32Byte(byte[] key) 
+        private byte[] KeyLenghtResizeTo32Byte(byte[] key) 
         {
             if (key.Length < 32)
             {
@@ -146,7 +152,7 @@ namespace Messenger
         }
 
         /* Генерация ключей */
-        static private void KeyGeneration(byte[] masterKey)
+        private void KeyGeneration(byte[] masterKey)
         {
             /* Генерация_раундовых_констант */
             byte[] iterNum;
@@ -183,10 +189,8 @@ namespace Messenger
         }
 
         /* Зашифрование текста */
-        static public byte[] Encript(byte[] text, byte[] masterKey)
+        public byte[] Encript(byte[] text)
         {
-            masterKey = KeyLenghtResizeTo32Byte(masterKey);
-            KeyGeneration(masterKey);
             int NumOfBlocks = (int)Math.Ceiling(text.Length / 16d); // Определение кол-ва блоков по 16 байт
             Array.Resize(ref text, NumOfBlocks * 16);
             byte[] encryptedText = new byte[NumOfBlocks * 16]; // Массив для хранения зашифрованных байтов
@@ -209,10 +213,8 @@ namespace Messenger
         }
 
         /* Расшифрование текста */
-        static public byte[] Decrypt(byte[] text, byte[] masterKey)
+        public byte[] Decrypt(byte[] text)
         {
-            masterKey = KeyLenghtResizeTo32Byte(masterKey);
-            KeyGeneration(masterKey);
             int NumOfBlocks = (int)Math.Ceiling(text.Length / 16d); // Определение кол-ва блоков по 16 байт
             byte[] decryptedText = new byte[NumOfBlocks * 16]; // Массив для хранения зашифрованных байтов
             byte[] block = new byte[16];

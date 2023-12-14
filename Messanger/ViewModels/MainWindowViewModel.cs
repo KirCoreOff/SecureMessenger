@@ -9,6 +9,7 @@ using System;
 using Microsoft.Win32;
 using System.ComponentModel;
 using System.Windows;
+using System.Threading.Tasks;
 
 namespace Messenger.ViewModels
 {
@@ -17,6 +18,7 @@ namespace Messenger.ViewModels
         #region Завершение приложения (Не трогать)
         static public void OnWindowClosing(object sender, CancelEventArgs e)
         {
+            Client.DisconnectFromServer();
             Application.Current.Shutdown();
         }
         #endregion
@@ -26,13 +28,15 @@ namespace Messenger.ViewModels
         private void OnAttachFileCommandExecuted(object p)
         {
             string filePath = "";
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            if (openFileDialog.ShowDialog() == true)
-            {
-                filePath = openFileDialog.FileName;
-                if (filePath != null)
-                    Client.SendFile(filePath);
-            }
+            Client.DisconnectFromServer();
+            //OpenFileDialog openFileDialog = new OpenFileDialog();
+            //if (openFileDialog.ShowDialog() == true)
+            //{
+            //    filePath = openFileDialog.FileName;
+            //    if (filePath != null)
+            //        Task.Run(()=>Client.SendFile(filePath, this));
+            //    ProgressBarValue = 50;
+            //}
         }
         private bool OnAttachFileCommandExecute(object p) => true;
         #endregion
@@ -57,11 +61,11 @@ namespace Messenger.ViewModels
         }
         #endregion
         #region История сообщений
-        static private ObservableCollection<Message> _StoryMessages = new ObservableCollection<Message>
+        private ObservableCollection<Message> _StoryMessages = new ObservableCollection<Message>
         { 
             new Message("login111", "Ukraine for gays, Ukraine for gays", "23:15")
         };
-        static public ObservableCollection<Message> StoryMessages
+        public ObservableCollection<Message> StoryMessages
         {
             get => _StoryMessages;
         }
@@ -98,7 +102,7 @@ namespace Messenger.ViewModels
             AttachFileCommand = new LambdaCommand(OnAttachFileCommandExecuted, OnAttachFileCommandExecute);
             SendMessageCommand = new LambdaCommand(OnSendMessageCommandExecuted, OnSendMessageCommandExecute);
             #endregion
-            Thread th = new Thread(Client.ReadMessage);
+            Thread th = new Thread(() => Client.ReadMessage(this));
             th.Start(); // Запуск потока на общение с сервером
         }
     }
