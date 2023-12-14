@@ -130,7 +130,7 @@ namespace Messenger
                         continue;
                     if (infoPackage[0] == "F") // Метка получения файла
                     {
-                        Console.WriteLine("Получил сообщение");
+                        //Console.WriteLine("Получил сообщение");
                         string fileName = infoPackage[2];
                         SendMessage(Kuznechik.Encript(
                             Encoding.UTF8.GetBytes($"M~{infoPackage[1]}~Отправил файл {infoPackage[2]}~{infoPackage[4]}~"),
@@ -150,35 +150,18 @@ namespace Messenger
                                 file.Write(buff, 0, bytesReceived);
                             }
                             Console.WriteLine($"Файл {fileName} Получен успешно! Вес файла: {file.Length} Байт");
-                            string encFilePath = Encoding.UTF8.GetString(
-                                Kuznechik.Encript(Encoding.UTF8.GetBytes(infoPackage[1]), bytesMasterKey));
+                            byte[] encFilePath = Kuznechik.Encript(Encoding.UTF8.GetBytes(fileName), bytesMasterKey);
                             string command = $"insert into messages(senderLogin, FilePath, Timestamp)" +
-                                $" values(\"{clientLogin}\", \"{encFilePath}\", NOW())";
+                                $" values(\"{clientLogin}\", @encFilePath, NOW())";
                             using (MySqlCommand cmd = new MySqlCommand(command, sql))
                             {
                                 cmd.Parameters.AddWithValue("@senderLogin", clientLogin);
                                 cmd.Parameters.AddWithValue("@FilePath", encFilePath);
+                                cmd.Parameters.Add("@encFilePath", MySqlDbType.Binary).Value = encFilePath;
                                 cmd.ExecuteNonQuery();
                             }
                             Thread.Sleep(500);
                         }
-                        //// Открытие полученного зашифрованного файла
-                        //using (FileStream sourceStream = File.OpenRead(fileName))
-                        //{
-                        //    // Создание расшифрованного файла
-                        //    using (FileStream destinationStream = File.Create("dec.jpg"))
-                        //    {
-                        //        // Создаем буфер для чтения и записи данных
-                        //        byte[] buffer = new byte[BUFF_SIZE];
-                        //        int bytesRead;
-                        //        // Расшифровка байтов из полученного файла и запись их в созданный
-                        //        while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
-                        //        {
-                        //            byte[] encryptedBytes = Kuznechik.Decrypt(buffer, bytesMasterKey);
-                        //            destinationStream.Write(encryptedBytes, 0, bytesRead);
-                        //        }
-                        //    }
-                        //}
                         SendFile(fileName, (Socket)ClientSock); // Отправка зашифрованного файла всем клиентам
                     }
                     else if (infoPackage[0] == "M") // Метка получения сообщения
@@ -287,7 +270,10 @@ namespace Messenger
                                 ((Socket)ClientSock).Send(Kuznechik.Encript(
                                     Encoding.UTF8.GetBytes("S~0~"),
                                     bytesMasterKey));
-                                //SendMessageHistory((Socket)ClientSock);
+                                SendMessage(Kuznechik.Encript(Encoding.UTF8.GetBytes(
+                                    $"M~Система~{clientLogin} подклюился!~{DateTime.Now.ToShortTimeString()}~"),
+                                    bytesMasterKey), (Socket)ClientSock);
+                                SendMessageHistory((Socket)ClientSock);
                             }
                             else
                             {
@@ -308,6 +294,9 @@ namespace Messenger
                     else if (infoPackage[0] == "Q")
                     {
                         Console.WriteLine($"Клиент {clientLogin} отключился");
+                        SendMessage(Kuznechik.Encript(Encoding.UTF8.GetBytes(
+                            $"M~Система~{clientLogin} отключился~{DateTime.Now.ToShortTimeString()}"),
+                            bytesMasterKey), (Socket)ClientSock);
                         clientIsConnected = false;
                     }
                 }
@@ -338,8 +327,10 @@ namespace Messenger
                             }
                             else
                             {
+                                byte[] filePathBytes = new byte[reader.GetBytes(reader.GetOrdinal("FilePath"), 0, null, 0, int.MaxValue)];
+                                reader.GetBytes(reader.GetOrdinal("FilePath"), 0, filePathBytes, 0, filePathBytes.Length);
                                 filePath = Encoding.UTF8.GetString(Kuznechik.Decrypt(
-                                    Encoding.UTF8.GetBytes(reader.GetString("filePath")), bytesMasterKey)).Trim('\0');
+                                    filePathBytes, bytesMasterKey)).Trim('\0');
                             }    
 
                             string timestamp = reader.GetString("timestamp");
@@ -357,6 +348,7 @@ namespace Messenger
             /// <param name="fileName">Имя файла</param>
             static void SendFile(string fileName, Socket senderSocket)
             {
+                int i = 0;
                 Console.WriteLine("Отправка файла клиентам...");
                 byte[] buff = new byte[BUFF_SIZE];
                 // Получение списка авторизованных клиентов
@@ -365,7 +357,7 @@ namespace Messenger
                 foreach (Socket client in authClient)
                 {
                     FileInfo file = new FileInfo(fileName);
-                    buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"F~{file.Name}~{file.Length}~"),
+                    buff = Kuznechik.Encript(Encoding.UTF8.GetBytes($"F~{++i}{file.Name}~{file.Length}~"),
                         bytesMasterKey);
                     client.Send(buff);
                     client.SendFile(fileName);

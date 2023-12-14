@@ -26,8 +26,9 @@ namespace Messenger.ViewModels
             if (openFileDialog.ShowDialog() == true)
             {
                 filePath = openFileDialog.FileName;
+                if (filePath != null)
+                    Client.SendFile(filePath);
             }
-            Client.SendFile(filePath);
         }
         private bool OnAttachFileCommandExecute(object p) => true;
         #endregion
