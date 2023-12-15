@@ -26,8 +26,8 @@ namespace Messenger.Models
         const int BUFF_SIZE = 8192;
         // Настройка Сокета для подключения
         static int port = 11000;
-        static IPHostEntry ipHost = Dns.GetHostEntry("localhost");
-        static IPAddress ipAddr = ipHost.AddressList[0];
+        static IPHostEntry ipHost = Dns.GetHostEntry("");
+        static IPAddress ipAddr = ipHost.AddressList[10];
         static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, port);
         static Socket serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         static bool connectedToServer = true;

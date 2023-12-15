@@ -24,8 +24,8 @@ namespace Messenger
             // Настройка Сокета для подключения
             static IPAddress IP;
             static int port;
-            static IPHostEntry ipHost = Dns.GetHostEntry("localhost");
-            static IPAddress ipAddr = ipHost.AddressList[0];
+            static IPHostEntry ipHost = Dns.GetHostEntry("");
+            static IPAddress ipAddr = ipHost.AddressList[10];
             static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 11000);
             static Socket sListener = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
