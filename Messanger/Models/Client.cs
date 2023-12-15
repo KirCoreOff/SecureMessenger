@@ -11,6 +11,10 @@ using System.Windows.Threading;
 using System.Windows;
 using Messenger.Models;
 using System.Windows.Controls;
+using System.Threading.Tasks;
+using System.Linq;
+using System.ComponentModel;
+using System.Diagnostics;
 
 namespace Messenger.Models
 {
@@ -19,7 +23,7 @@ namespace Messenger.Models
         #region Настроки
         static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
         static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
-        const int BUFF_SIZE = 1024;
+        const int BUFF_SIZE = 8192;
         // Настройка Сокета для подключения
         static int port = 11000;
         static IPHostEntry ipHost = Dns.GetHostEntry("localhost");
@@ -85,27 +89,41 @@ namespace Messenger.Models
                         Console.WriteLine($"Файл {fileName} получен успешно! Вес файлоа: {file.Length} Байт");
                         // Открытие полученного зашифрованного файла
                     }
-                    FileInfo fileInfo = new FileInfo(encryptedFile); 
+                    FileInfo fileInfo = new FileInfo(encryptedFile);
                     using (FileStream file = File.OpenRead(encryptedFile))
                     {
-                        mainVM.Status = "Файл расшифровывается";
+                        mainVM.Status = "Файл расшифровывается...";
                         // Создание расшифрованного файла
                         using (FileStream destinationStream = File.Create($"{fileName}"))
                         {
-                            // Создаем буфер для чтения и записи данных
-                            byte[] buffer = new byte[BUFF_SIZE];
-                            int bytesRead;
-                            int i = 0;
-                            // Расшифровка байтов из полученного файла и запись их в созданный 
-                            while ((bytesRead = file.Read(buffer, 0, buffer.Length)) > 0)
+                            int threadCount = 10;
+                            int bytesRead = 0;
+                            byte[] encBuffer = new byte[BUFF_SIZE * threadCount];
+                            byte[] decBuffer = new byte[BUFF_SIZE * threadCount];
+                            Thread[] threads = new Thread[threadCount];
+                            while ((bytesRead = file.Read(encBuffer, 0, encBuffer.Length)) > 0)
                             {
-                                byte[] encryptedBytes = kuznechik.Decrypt(buffer);
-                                destinationStream.Write(encryptedBytes, 0, bytesRead);
-                                mainVM.ProgressBarValue = 1024d * ++i / fileInfo.Length * 100;
+                                for (int i = 0; i < threadCount; i++)
+                                {
+                                    threads[i] = new Thread(() =>
+                                    {
+                                        int indexOfCurrentBlock = int.Parse(Thread.CurrentThread.Name) * BUFF_SIZE;
+                                        Array.Copy(kuznechik.Decrypt(encBuffer.Skip(indexOfCurrentBlock).Take(BUFF_SIZE).ToArray()),
+                                            0, decBuffer, indexOfCurrentBlock, BUFF_SIZE);
+                                    });
+                                    threads[i].Name = i.ToString();
+                                    threads[i].Start();
+                                }
+                                for (int i = 0; i < threadCount; i++)
+                                {
+                                    threads[i].Join();
+                                }
+                                mainVM.ProgressBarValue = (double)destinationStream.Length / file.Length * 100;
+                                destinationStream.Write(decBuffer, 0, bytesRead);
                             }
                         }
                     }
-                    mainVM.Status = "";
+                    mainVM.Status = "Файл расшифровался";
                     mainVM.ProgressBarValue = 0;
                     File.Delete(encryptedFile);
                 }
@@ -146,35 +164,44 @@ namespace Messenger.Models
             //string filePath = "smile.jpg";
             FileInfo file = new FileInfo(filePath);
             string encriptedFilePath = $"enc_{file.Name}";
-            string decriptedFilePath = $"dec_{file}";
+            //string decriptedFilePath = $"dec_{file.Name}";
             if (File.Exists(filePath))
             {
                 // Открытие файл на чтениен
                 using (FileStream sourceStream = File.OpenRead(filePath))
                 {
+                    mainVM.Status = "Файл шифруется...";
                     // Создание шифрованного файла
                     using (FileStream destinationStream = File.Create(encriptedFilePath))
                     {
-                        // Создаем буфер для чтения и записи данных
-                        //Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
-                        //    () => new Thread(() => { mainVM.Status = "Файл шифруется"; }).Start());
-                        mainVM.Status = "Файл шифруется";
-                        byte[] buffer = new byte[BUFF_SIZE];
-                        int bytesRead;
-                        // Процесс шифрования байтов файла
-                        int i = 0;
+                        int threadCount = 10;
+                        int bytesRead = 0;
+                        byte[] buffer = new byte[BUFF_SIZE * threadCount];
+                        byte[] encBuffer = new byte[BUFF_SIZE * threadCount];
+                        Thread[] threads = new Thread[threadCount];
                         while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
                         {
-                            byte[] encryptedBytes = kuznechik.Encript(buffer);
-                            destinationStream.Write(encryptedBytes, 0, bytesRead);
-                            //Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
-                            //    () => new Thread(() => { mainVM.ProgressBarValue = 1024 * ++i / file.Length; }).Start());
-                            mainVM.ProgressBarValue = 1024d * ++i / file.Length * 100;
+                            for (int i = 0; i < threadCount; i++)
+                            {
+                                threads[i] = new Thread(() =>
+                                {
+                                    int indexOfCurrentBlock = int.Parse(Thread.CurrentThread.Name) * BUFF_SIZE;
+                                    Array.Copy(kuznechik.Encript(buffer.Skip(indexOfCurrentBlock).Take(BUFF_SIZE).ToArray()),
+                                        0, encBuffer, indexOfCurrentBlock, BUFF_SIZE);
+                                });
+                                threads[i].Name = i.ToString();
+                                threads[i].Start();
+                            }
+                            for (int i = 0; i < threadCount; i++)
+                            {
+                                threads[i].Join();
+                            }
+                            mainVM.ProgressBarValue = (double)destinationStream.Length / sourceStream.Length * 100;
+                            destinationStream.Write(encBuffer, 0, bytesRead);
                         }
-                        mainVM.Status = "";
-                        mainVM.ProgressBarValue = 0;
                     }
                 }
+                mainVM.ProgressBarValue = 0;
                 Console.WriteLine($"Файл {file.Name} зашифрован в файл {encriptedFilePath}");
                 byte[] buff = kuznechik.Encript(Encoding.UTF8.GetBytes
                     ($"F~{clientLogin}~{file.Name}~{file.Length}~{DateTime.Now.ToShortTimeString()}~")); // Служебрный пакет

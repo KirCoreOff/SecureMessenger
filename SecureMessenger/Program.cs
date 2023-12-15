@@ -20,7 +20,7 @@ namespace Messenger
             static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
             static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
             static Kuznechik kuznechik = new Kuznechik(bytesMasterKey);
-            const int BUFF_SIZE = 1024;
+            const int BUFF_SIZE = 8192;
             // Настройка Сокета для подключения
             static IPAddress IP;
             static int port;
