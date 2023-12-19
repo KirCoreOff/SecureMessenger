@@ -33,8 +33,7 @@ namespace Messenger.ViewModels
             {
                 filePath = openFileDialog.FileName;
                 if (filePath != null)
-                    Task.Run(() => Client.SendFile(filePath, this));
-                ProgressBarValue = 50;
+                    Client.SendFile(filePath, this);
             }
         }
         private bool OnAttachFileCommandExecute(object p) => true;
@@ -60,10 +59,7 @@ namespace Messenger.ViewModels
         }
         #endregion
         #region История сообщений
-        private ObservableCollection<Message> _StoryMessages = new ObservableCollection<Message>
-        { 
-            new Message("login111", "Ukraine for gays, Ukraine for gays", "23:15")
-        };
+        private ObservableCollection<Message> _StoryMessages = new ObservableCollection<Message>();
         public ObservableCollection<Message> StoryMessages
         {
             get => _StoryMessages;
@@ -78,7 +74,7 @@ namespace Messenger.ViewModels
         }
         #endregion
         #region Статус
-        private string _Status = "Получение файла...";
+        private string _Status = String.Empty;
         public string Status
         {
             get => _Status;

@@ -13,18 +13,50 @@
     <Window.DataContext>
         <vm:MainWindowViewModel />
     </Window.DataContext>
+    <Window.Resources>
+        <Image x:Key="AttachFileImage"
+               Source="..\..\Images\AttachFile.png" />
+        <Style x:Key="btn_AttachFile"
+               TargetType="Button">
+            <Setter Property="Background"
+                    Value="LightCyan" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderThickness="3"
+                                CornerRadius="8">
+                            <Image Source="../../Images/AttachFile.png" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver"
+                         Value="True">
+                    <Setter Property="Background"
+                            Value="Silver" />
+                </Trigger>
+                <Trigger Property="IsEnabled"
+                         Value="False">
+                    <Setter Property="Opacity"
+                            Value="0.5" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
     <Grid>
         <Grid.Background>
             <LinearGradientBrush EndPoint="0.5,1"
                                  StartPoint="0.5,0">
-                <GradientStop Color="Red"
-                              Offset="0.8" />
                 <GradientStop Color="White"
                               Offset="0.2" />
                 <GradientStop Color="#FF0800FF"
                               Offset="0.3" />
                 <GradientStop Color="#FE1A00FF"
                               Offset="0.7" />
+                <GradientStop Color="Red"
+                              Offset="0.8" />
             </LinearGradientBrush>
         </Grid.Background>
         <Grid.RowDefinitions>
@@ -79,7 +111,26 @@
             <TextBox Grid.Column="0"
                      Margin="20"
                      Text="{Binding CurrentMessage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     FontSize="24">
+                     FontSize="20">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TextBox">
+                                    <Border CornerRadius="12"
+                                            Padding="4, 0, 4, 0"
+                                            BorderBrush="#FFFF9D9D"
+                                            BorderThickness="3"
+                                            Background="#FFFFE8E8">
+                                        <ScrollViewer Margin="0"
+                                                      x:Name="PART_ContentHost"
+                                                      VerticalContentAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TextBox.Style>
                 <TextBox.InputBindings>
                     <KeyBinding Command="{Binding SendMessageCommand}"
                                 Key="Enter" />
@@ -87,7 +138,8 @@
             </TextBox>
             <Button Grid.Column="1"
                     Command="{Binding AttachFileCommand}"
-                    Margin="20" />
+                    Margin="14"
+                    Style="{StaticResource btn_AttachFile}" />
         </Grid>
         <Grid Grid.Row="2"
               Margin="0, 5">
@@ -102,8 +154,27 @@
                        FontSize="18" />
             <ProgressBar Value="{Binding ProgressBarValue}"
                          Grid.Column="1"
-                         MinWidth="260"
-                         Margin="10, 0" />
+                         BorderThickness="3"
+                         BorderBrush="Silver"
+                         Margin="10, 0"
+                         MinWidth="200">
+                <ProgressBar.Style>
+                    <Style TargetType="ProgressBar">
+                        <Style.Triggers>
+                            <Trigger Property="Value"
+                                     Value="0">
+                                <Setter Property="Visibility"
+                                        Value="Hidden" />
+                            </Trigger>
+                            <Trigger Property="Value"
+                                     Value="100">
+                                <Setter Property="Visibility"
+                                        Value="Hidden" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ProgressBar.Style>
+            </ProgressBar>
         </Grid>
     </Grid>
 </Window>

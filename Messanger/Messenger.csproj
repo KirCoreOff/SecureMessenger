@@ -5,6 +5,19 @@
     <TargetFramework>net7.0-windows7.0</TargetFramework>
     <Nullable>disable</Nullable>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Images\icon3.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Images\AttachFile.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Images\icon3.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\AttachFile.png" />
+  </ItemGroup>
 
 </Project>

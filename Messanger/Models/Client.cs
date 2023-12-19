@@ -1,4 +1,4 @@
-﻿using System.Net.Sockets;
+using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -27,9 +27,9 @@ namespace Messenger.Models
         // Настройка Сокета для подключения
         static int port = 11000;
         static IPHostEntry ipHost = Dns.GetHostEntry("");
-        static IPAddress ipAddr = ipHost.AddressList[10];
-        static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, port);
-        static Socket serverSocket = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        //static IPAddress ipAddr = ipHost.AddressList[0];
+        static IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse("26.105.113.147"), port);
+        static Socket serverSocket = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         static bool connectedToServer = true;
         static public string clientLogin = "";
         static Kuznechik kuznechik = new Kuznechik(bytesMasterKey);
