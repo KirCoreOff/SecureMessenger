@@ -138,10 +138,6 @@ namespace Messenger
                         // Содание файла для записи передаваемых зашифрованных байтов файла
                         using (FileStream file = File.OpenWrite(fileName))
                         {
-                            // Определение количества необходимых пакетов
-                            int packages = int.Parse(infoPackage[3]) / BUFF_SIZE;
-                            if (long.Parse(infoPackage[3]) % BUFF_SIZE != 0)
-                                packages++;
                             // Запись зашифрованных байтов в файл
                             while (bytesReceived < int.Parse(infoPackage[3]))
                             {
@@ -268,7 +264,7 @@ namespace Messenger
                                 Console.WriteLine($"Пользователь {clientLogin} авторизировался");
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~0~")));
                                 SendMessage(kuznechik.Encript(Encoding.UTF8.GetBytes(
-                                    $"M~Система~{clientLogin} подклюился!~{DateTime.Now.ToShortTimeString()}~")), (Socket)ClientSock);
+                                    $"M~Система~{clientLogin} подключился!~{DateTime.Now.ToShortTimeString()}~")), (Socket)ClientSock);
                                 SendMessageHistory((Socket)ClientSock);
                             }
                             else
