@@ -23,7 +23,8 @@ namespace Messenger.Models
         #region Настроки
         static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
         static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
-        const int BUFF_SIZE = 8192;
+        const int BUFF_SIZE_FILE = 8192;
+        const int BUFF_SIZE_MESSAGE = 512;
         // Настройка Сокета для подключения
         static int port = 11000;
         static IPHostEntry ipHost = Dns.GetHostEntry("");
@@ -50,13 +51,15 @@ namespace Messenger.Models
         /// </summary>
         static public void ReadMessage(MainWindowViewModel mainVM)
         {
+            int count = 0;
             while (connectedToServer)
             {
-                byte[] buff = new byte[BUFF_SIZE];
+                byte[] buff = new byte[BUFF_SIZE_MESSAGE];
                 // Получение сообщения от клиента
                 try
                 {
                     serverSocket.Receive(buff);    // Получаем последовательность байтов из сокета в буфер buff
+                    count++;
                 }
                 catch (Exception)
                 {
@@ -77,7 +80,7 @@ namespace Messenger.Models
                     using (FileStream file = File.OpenWrite(encryptedFile))
                     {
                         // Определение количества необходимых пакетов
-                        int fileLangth = int.Parse(infoPackage[3]);
+                        int fileLangth = int.Parse(infoPackage[2]);
                         // Запись зашифрованных байтов в файл
                         while (bytesReceived < fileLangth)
                         {
@@ -96,10 +99,10 @@ namespace Messenger.Models
                         // Создание расшифрованного файла
                         using (FileStream destinationStream = File.Create($"{fileName}"))
                         {
-                            int threadCount = 10;
+                            int threadCount = Process.GetCurrentProcess().Threads.Count;
                             int bytesRead = 0;
-                            byte[] encBuffer = new byte[BUFF_SIZE * threadCount];
-                            byte[] decBuffer = new byte[BUFF_SIZE * threadCount];
+                            byte[] encBuffer = new byte[BUFF_SIZE_FILE * threadCount];
+                            byte[] decBuffer = new byte[BUFF_SIZE_FILE * threadCount];
                             Thread[] threads = new Thread[threadCount];
                             while ((bytesRead = file.Read(encBuffer, 0, encBuffer.Length)) > 0)
                             {
@@ -107,9 +110,9 @@ namespace Messenger.Models
                                 {
                                     threads[i] = new Thread(() =>
                                     {
-                                        int indexOfCurrentBlock = int.Parse(Thread.CurrentThread.Name) * BUFF_SIZE;
-                                        Array.Copy(kuznechik.Decrypt(encBuffer.Skip(indexOfCurrentBlock).Take(BUFF_SIZE).ToArray()),
-                                            0, decBuffer, indexOfCurrentBlock, BUFF_SIZE);
+                                        int indexOfCurrentBlock = int.Parse(Thread.CurrentThread.Name) * BUFF_SIZE_FILE;
+                                        Array.Copy(kuznechik.Decrypt(encBuffer.Skip(indexOfCurrentBlock).Take(BUFF_SIZE_FILE).ToArray()),
+                                            0, decBuffer, indexOfCurrentBlock, BUFF_SIZE_FILE);
                                     });
                                     threads[i].Name = i.ToString();
                                     threads[i].Start();
@@ -127,6 +130,7 @@ namespace Messenger.Models
                     mainVM.ProgressBarValue = 0;
                     File.Delete(encryptedFile);
                 }
+                
                 else if (infoPackage[0] == "M") // Метка получения сообщения
                 {
                     Application.Current.Dispatcher.BeginInvoke(
@@ -176,8 +180,8 @@ namespace Messenger.Models
                     {
                         int threadCount = 10;
                         int bytesRead = 0;
-                        byte[] buffer = new byte[BUFF_SIZE * threadCount];
-                        byte[] encBuffer = new byte[BUFF_SIZE * threadCount];
+                        byte[] buffer = new byte[BUFF_SIZE_FILE * threadCount];
+                        byte[] encBuffer = new byte[BUFF_SIZE_FILE * threadCount];
                         Thread[] threads = new Thread[threadCount];
                         while ((bytesRead = sourceStream.Read(buffer, 0, buffer.Length)) > 0)
                         {
@@ -185,9 +189,9 @@ namespace Messenger.Models
                             {
                                 threads[i] = new Thread(() =>
                                 {
-                                    int indexOfCurrentBlock = int.Parse(Thread.CurrentThread.Name) * BUFF_SIZE;
-                                    Array.Copy(kuznechik.Encript(buffer.Skip(indexOfCurrentBlock).Take(BUFF_SIZE).ToArray()),
-                                        0, encBuffer, indexOfCurrentBlock, BUFF_SIZE);
+                                    int indexOfCurrentBlock = int.Parse(Thread.CurrentThread.Name) * BUFF_SIZE_FILE;
+                                    Array.Copy(kuznechik.Encript(buffer.Skip(indexOfCurrentBlock).Take(BUFF_SIZE_FILE).ToArray()),
+                                        0, encBuffer, indexOfCurrentBlock, BUFF_SIZE_FILE);
                                 });
                                 threads[i].Name = i.ToString();
                                 threads[i].Start();
@@ -231,7 +235,7 @@ namespace Messenger.Models
             // Отправка логина и пароля в зашифрованном виде на сервер для регистрации
             byte[] buff = kuznechik.Encript(Encoding.UTF8.GetBytes($"R~{login}~{password}~"));
             serverSocket.Send(buff);
-            buff = new byte[BUFF_SIZE];
+            buff = new byte[BUFF_SIZE_MESSAGE];
             // Получение ответа от сервера
             serverSocket.Receive(buff);
             int regInfo = -1;
@@ -256,7 +260,7 @@ namespace Messenger.Models
             // Отправка логина и пароля в зашифрованном виде на сервер для аутентификации
             byte[] buff = kuznechik.Encript(Encoding.UTF8.GetBytes($"A~{login}~{password}~"));
             serverSocket.Send(buff);
-            buff = new byte[BUFF_SIZE];
+            buff = new byte[BUFF_SIZE_MESSAGE];
             // Получение ответа от сервера
             serverSocket.Receive(buff);
             int authInfo = -1;

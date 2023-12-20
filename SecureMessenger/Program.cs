@@ -20,7 +20,8 @@ namespace Messenger
             static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
             static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
             static Kuznechik kuznechik = new Kuznechik(bytesMasterKey);
-            const int BUFF_SIZE = 8192;
+            const int BUFF_SIZE_FILE = 8192;
+            const int BUFF_SIZE_MESSAGE = 512;
             // Настройка Сокета для подключения
             static IPAddress IP;
             static int port;
@@ -108,11 +109,12 @@ namespace Messenger
                 bool clientIsConnected = true;
                 while (clientIsConnected)
                 {
-                    byte[] buff = new byte[BUFF_SIZE];     // Буфер прочитанных из сокета байтов
+                    byte[] buffFile = new byte[BUFF_SIZE_MESSAGE];     // Буфер прочитанных из сокета байтов
+                    byte[] buffMsg = new byte[BUFF_SIZE_MESSAGE];     // Буфер прочитанных из сокета байтов
                     // Получение сообщения от сервера
                     try
                     {
-                        ((Socket)ClientSock).Receive(buff); // Получаем последовательность байтов из сокета в буфер buff
+                        ((Socket)ClientSock).Receive(buffMsg); // Получаем последовательность байтов из сокета в буфер buff
                     }
                     catch (Exception)
                     {
@@ -122,7 +124,7 @@ namespace Messenger
                         clientIsConnected = false;
                     }
                     // Расшифровка и разбиение пакета на информациронные части 
-                    string[] infoPackage = Encoding.UTF8.GetString(kuznechik.Decrypt(buff)).Trim('\0').Split('~');
+                    string[] infoPackage = Encoding.UTF8.GetString(kuznechik.Decrypt(buffMsg)).Trim('\0').Split('~');
                     // Обработка пакетов только авторизаованных клиентов, или клиентов, проходящих регистрацию или аутентификацию
                     if (infoPackage[0] != "A" && infoPackage[0] != "R" && clients[(Socket)ClientSock] == false)
                         continue;
@@ -141,8 +143,8 @@ namespace Messenger
                             // Запись зашифрованных байтов в файл
                             while (bytesReceived < int.Parse(infoPackage[3]))
                             {
-                                currentBytesReceived = ((Socket)ClientSock).Receive(buff);
-                                file.Write(buff, 0, currentBytesReceived);
+                                currentBytesReceived = ((Socket)ClientSock).Receive(buffFile);
+                                file.Write(buffFile, 0, currentBytesReceived);
                                 bytesReceived += currentBytesReceived;
                             }
                             //for (int i = 0; i < packages; i++)
@@ -178,7 +180,7 @@ namespace Messenger
                             cmd.Parameters.Add("@encMessage", MySqlDbType.Binary).Value = encMessage;
                             cmd.ExecuteNonQuery();
                         }
-                        SendMessage(buff, (Socket)ClientSock);
+                        SendMessage(buffMsg, (Socket)ClientSock);
                     }
                     else if (infoPackage[0] == "R") // Метка решистрации клиента
                     {
@@ -327,15 +329,15 @@ namespace Messenger
             {
                 int i = 0;
                 Console.WriteLine("Отправка файла клиентам...");
-                byte[] buff = new byte[BUFF_SIZE];
+                byte[] buffMsg = new byte[BUFF_SIZE_MESSAGE];
                 // Получение списка авторизованных клиентов
                 var authClient = clients.Where(kv => kv.Value == true).Where(kv => kv.Key != senderSocket).Select(kv => kv.Key).ToList();
                 // Отправка файла авторизованным клиентам
                 foreach (Socket client in authClient)
                 {
                     FileInfo file = new FileInfo(fileName);
-                    buff = kuznechik.Encript(Encoding.UTF8.GetBytes($"F~{++i}{file.Name}~{file.Length}~"));
-                    client.Send(buff);
+                    buffMsg = kuznechik.Encript(Encoding.UTF8.GetBytes($"F~{++i}{file.Name}~{file.Length}~"));
+                    client.Send(buffMsg);
                     client.SendFile(fileName);
                     Console.WriteLine($"Файл успешно отправлен! Вес файла: {file.Length} Байт");
                 }
