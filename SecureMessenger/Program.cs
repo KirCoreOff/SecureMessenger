@@ -132,7 +132,9 @@ namespace Messenger
                         string fileName = infoPackage[2];
                         SendMessage(kuznechik.Encript(Encoding.UTF8.GetBytes(
                             $"M~{infoPackage[1]}~Отправил файл {infoPackage[2]}~{infoPackage[4]}~")), (Socket)ClientSock);
-                        int bytesReceived;
+                        int bytesReceived = 0;
+                        int currentBytesReceived = 0;
+
                         // Содание файла для записи передаваемых зашифрованных байтов файла
                         using (FileStream file = File.OpenWrite(fileName))
                         {
@@ -141,11 +143,17 @@ namespace Messenger
                             if (long.Parse(infoPackage[3]) % BUFF_SIZE != 0)
                                 packages++;
                             // Запись зашифрованных байтов в файл
-                            for (int i = 0; i < packages; i++)
+                            while (bytesReceived < int.Parse(infoPackage[3]))
                             {
-                                bytesReceived = ((Socket)ClientSock).Receive(buff);
-                                file.Write(buff, 0, bytesReceived);
+                                currentBytesReceived = ((Socket)ClientSock).Receive(buff);
+                                file.Write(buff, 0, currentBytesReceived);
+                                bytesReceived += currentBytesReceived;
                             }
+                            //for (int i = 0; i < packages; i++)
+                            //{
+                            //    bytesReceived = ((Socket)ClientSock).Receive(buff);
+                            //    file.Write(buff, 0, bytesReceived);
+                            //}
                             Console.WriteLine($"Файл {fileName} Получен успешно! Вес файла: {file.Length} Байт");
                             byte[] encFilePath = kuznechik.Encript(Encoding.UTF8.GetBytes(fileName));
                             string command = $"insert into messages(senderLogin, FilePath, Timestamp)" +

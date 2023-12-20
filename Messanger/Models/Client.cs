@@ -70,7 +70,8 @@ namespace Messenger.Models
                 {
                     string fileName = infoPackage[1];
                     string encryptedFile = $"enc_{fileName}";
-                    int bytesReceived;
+                    int bytesReceived = 0;
+                    int bytesReceived = 0;
                     mainVM.Status = "Получение файла";
                     // Содание файла для записи передаваемых зашифрованных байтов файла
                     using (FileStream file = File.OpenWrite(encryptedFile))
@@ -80,11 +81,11 @@ namespace Messenger.Models
                         if (long.Parse(infoPackage[2]) % BUFF_SIZE != 0)
                             packages++;
                         // Запись зашифрованных байтов в файл
-                        for (int i = 0; i < packages; i++)
+                        while (bytesReceived < int.Parse(infoPackage[3]))
                         {
-                            bytesReceived = serverSocket.Receive(buff);
-                            file.Write(buff, 0, bytesReceived);
-                            mainVM.ProgressBarValue = (double)i / packages;
+                            currentBytesReceived = ((Socket)ClientSock).Receive(buff);
+                            file.Write(buff, 0, currentBytesReceived);
+                            bytesReceived += currentBytesReceived;
                         }
                         Console.WriteLine($"Файл {fileName} получен успешно! Вес файлоа: {file.Length} Байт");
                         // Открытие полученного зашифрованного файла
