@@ -25,7 +25,7 @@ namespace Messenger
             static IPAddress IP;
             static int port;
             static IPHostEntry ipHost = Dns.GetHostEntry("");
-            static IPAddress ipAddr = ipHost.AddressList[10];
+            static IPAddress ipAddr = ipHost.AddressList[13];
             static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 11000);
             static Socket sListener = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 

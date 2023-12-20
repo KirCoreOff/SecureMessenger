@@ -33,7 +33,7 @@ namespace Messenger.ViewModels
             {
                 filePath = openFileDialog.FileName;
                 if (filePath != null)
-                    Client.SendFile(filePath, this);
+                    Task.Run(() => Client.SendFile(filePath, this));
             }
         }
         private bool OnAttachFileCommandExecute(object p) => true;

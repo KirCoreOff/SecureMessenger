@@ -1,0 +1,30 @@
+version: "3.8"
+networks:
+  net:
+services:
+  server: 
+    image: securemessengerserver:local
+    build: .
+    ports:
+      - "11000:11000"
+    networks: 
+      - net
+    depends_on: 
+      - database
+  database:
+    image: mysql:8.0
+    environment: 
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: securemessenger
+    networks: 
+      - net
+    #volumes:
+    #  - ./mydb.sql:/docker-entrypoint-initdb.d/mydb.sql:ro
+    ports:
+      - "11001:33060"
+    volumes:
+      - data-volume:/var/lib/mysql
+volumes:
+  data-volume:
