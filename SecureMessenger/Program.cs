@@ -17,7 +17,7 @@ namespace Messenger
         static class Server
         {
             #region Настроки
-            static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
+            static string masterKey = Environment.GetEnvironmentVariable("$ENC_KEY");
             static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
             static Kuznechik kuznechik = new Kuznechik(bytesMasterKey);
             const int BUFF_SIZE_FILE = 8192;
@@ -26,7 +26,7 @@ namespace Messenger
             static IPAddress IP;
             static int port;
             static IPHostEntry ipHost = Dns.GetHostEntry("");
-            static IPAddress ipAddr = ipHost.AddressList[13];
+            static IPAddress ipAddr = ipHost.AddressList[10];
             static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 11000);
             static Socket sListener = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
@@ -84,6 +84,12 @@ namespace Messenger
                 string conectData = $"Server={host};Database={database};User ID={username};Password={password};";
                 return new MySqlConnection(conectData);
             }
+
+            static void Audit(string systemEvent)
+            {
+                File.AppendAllText("audit.txt", $"{DateTime.Now} {systemEvent}\n");
+            }
+
             /// <summary>
             /// Метод работы с клиентами
             /// </summary>
@@ -118,7 +124,9 @@ namespace Messenger
                     }
                     catch (Exception)
                     {
-                        Console.WriteLine($"Клиент {clientLogin} разорвал подключение");
+                        string systemEvent = $"Клиент {clientLogin} разорвал подключение";
+                        Console.WriteLine(systemEvent);
+                        Audit(systemEvent);
                         SendMessage(kuznechik.Encript(Encoding.UTF8.GetBytes(
                             $"M~Система~{clientLogin} отключился~{DateTime.Now.ToShortTimeString()}~")), (Socket)ClientSock);
                         clientIsConnected = false;
@@ -161,7 +169,8 @@ namespace Messenger
                                 cmd.Parameters.AddWithValue("@senderLogin", clientLogin);
                                 cmd.Parameters.AddWithValue("@FilePath", encFilePath);
                                 cmd.Parameters.Add("@encFilePath", MySqlDbType.Binary).Value = encFilePath;
-                                cmd.ExecuteNonQuery();
+                                int recordID = cmd.ExecuteNonQuery();
+                                Audit($"Клиент {clientLogin} отправил файл с ID={cmd.LastInsertedId}");
                             }
                             Thread.Sleep(500);
                         }
@@ -179,10 +188,11 @@ namespace Messenger
                             cmd.Parameters.AddWithValue("@messageText", encMessage);
                             cmd.Parameters.Add("@encMessage", MySqlDbType.Binary).Value = encMessage;
                             cmd.ExecuteNonQuery();
+                            Audit($"Клиент {clientLogin} отправил сообщение с ID={cmd.LastInsertedId}");
                         }
                         SendMessage(buffMsg, (Socket)ClientSock);
                     }
-                    else if (infoPackage[0] == "R") // Метка решистрации клиента
+                    else if (infoPackage[0] == "R") // Метка регистрации клиента
                     {
                         string command = $"SELECT * FROM users WHERE login = \"{infoPackage[1]}\"";
                         // Поиск в бд клиента с указанным логином
@@ -195,7 +205,9 @@ namespace Messenger
                                 if (reader.Read())
                                 {
                                     string login = reader.GetString("login");
-                                    Console.WriteLine($"Попытка регистрации клиента, логин которого уже есть в системе");
+                                    string systemEvent = $"Попытка регистрации клиента {login}. Такой пользователь уже существует";
+                                    Console.WriteLine(systemEvent);
+                                    Audit(systemEvent);
                                     ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes($"S~2~")));
                                     continue; // Выход из процесса регистрации, если пользователь с таким логином уже существует
                                 }
@@ -211,12 +223,17 @@ namespace Messenger
                             int rowsAffected = cmd.ExecuteNonQuery();
                             if (rowsAffected > 0)
                             {
-                                Console.WriteLine($"Пользователь {infoPackage[1]} зарегистрировался");
+                                string systemEvent = $"Пользователь {infoPackage[1]} зарегистрировался";
+                                Console.WriteLine(systemEvent);
+                                Audit(systemEvent);
+
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~0~")));
                             }
                             else
                             {
-                                Console.WriteLine("Регистрация завершилась с ошибкой.");
+                                string systemEvent = "Регистрация завершилась с ошибкой";
+                                Console.WriteLine(systemEvent);
+                                Audit(systemEvent);
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~1~")));
                             }
                         }
@@ -259,11 +276,13 @@ namespace Messenger
                             // Получение Стрибог-хэша пароля
                             byte[] hashPassword = Streebog.HashFunc(Encoding.UTF8.GetBytes(infoPackage[2]), 0, 0);
                             // Сравнение хэшей пароля
-                            if (storedPassword.SequenceEqual(hashPassword))
+                            if (storedPassword != null && storedPassword.SequenceEqual(hashPassword))
                             {
                                 clients[(Socket)ClientSock] = true;
                                 clientLogin = infoPackage[1];
-                                Console.WriteLine($"Пользователь {clientLogin} авторизировался");
+                                string systemEvent = $"Пользователь {clientLogin} авторизировался";
+                                Console.WriteLine(systemEvent);
+                                Audit(systemEvent);
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~0~")));
                                 SendMessage(kuznechik.Encript(Encoding.UTF8.GetBytes(
                                     $"M~Система~{clientLogin} подключился!~{DateTime.Now.ToShortTimeString()}~")), (Socket)ClientSock);
@@ -271,12 +290,16 @@ namespace Messenger
                             }
                             else
                             {
-                                Console.WriteLine($"Неудачная попытка входа в аккаунт {infoPackage[1]}");
+                                string systemEvent = $"Неудачная попытка входа в аккаунт {infoPackage[1]}";
+                                Console.WriteLine(systemEvent);
+                                Audit(systemEvent);
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~1~")));
                             }
                             if (!userExist)
                             {
-                                Console.WriteLine($"Попытка входа в несуществующий аккаунт {infoPackage[1]}");
+                                string systemEvent = $"Попытка входа в несуществующий аккаунт {infoPackage[1]}";
+                                Console.WriteLine(systemEvent);
+                                Audit(systemEvent);
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~2~")));
                             }
                         }
@@ -311,7 +334,7 @@ namespace Messenger
                                 byte[] filePathBytes = new byte[reader.GetBytes(reader.GetOrdinal("FilePath"), 0, null, 0, int.MaxValue)];
                                 reader.GetBytes(reader.GetOrdinal("FilePath"), 0, filePathBytes, 0, filePathBytes.Length);
                                 filePath = Encoding.UTF8.GetString(kuznechik.Decrypt(filePathBytes)).Trim('\0');
-                            }    
+                            }
 
                             string timestamp = reader.GetString("timestamp");
                             clientSocket.Send(kuznechik.Encript(

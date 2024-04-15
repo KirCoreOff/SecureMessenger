@@ -21,7 +21,7 @@ namespace Messenger.Models
     static class Client
     {
         #region Настроки
-        static string masterKey = "01234567890123456789012345678901"; // Ключ шифрования
+        static string masterKey = Environment.GetEnvironmentVariable("$ENC_KEY");
         static byte[] bytesMasterKey = Encoding.UTF8.GetBytes(masterKey);
         const int BUFF_SIZE_FILE = 8192;
         const int BUFF_SIZE_MESSAGE = 512;
@@ -130,7 +130,7 @@ namespace Messenger.Models
                     mainVM.ProgressBarValue = 0;
                     File.Delete(encryptedFile);
                 }
-                
+
                 else if (infoPackage[0] == "M") // Метка получения сообщения
                 {
                     Application.Current.Dispatcher.BeginInvoke(
