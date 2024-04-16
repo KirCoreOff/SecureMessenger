@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using Messenger.Models;
 using Messenger.ViewModels;
 using Messenger.Views.Windows;
 

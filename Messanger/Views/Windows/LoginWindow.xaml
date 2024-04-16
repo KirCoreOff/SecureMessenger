@@ -75,9 +75,14 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver"
+                         Value="False">
+                    <Setter Property="Background"
+                            Value="#FFC0FFF5" />
+                </Trigger>
+                <Trigger Property="IsMouseOver"
                          Value="True">
                     <Setter Property="Background"
-                            Value="#FFC0EFFF" />
+                            Value="#FF6AFFE7" />
                 </Trigger>
                 <Trigger Property="IsEnabled"
                          Value="False">
@@ -187,7 +192,6 @@
                     FontSize="22"
                     BorderBrush="LightCyan"
                     BorderThickness="3"
-                    Background="#FFC8FFFF"
                     Foreground="#FF2E65BF"
                     Opacity="0.8" />
         </StackPanel>
