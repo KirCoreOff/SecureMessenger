@@ -192,8 +192,7 @@
                     FontSize="22"
                     BorderBrush="LightCyan"
                     BorderThickness="3"
-                    Foreground="#FF2E65BF"
-                    Opacity="0.8" />
+                    Foreground="#FF2E65BF"/>
         </StackPanel>
         <TextBlock Grid.Row="3"
                    Margin="20, 5"

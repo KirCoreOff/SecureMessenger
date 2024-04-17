@@ -4,16 +4,10 @@ using System.Text;
 using System.Threading;
 using System;
 using System.IO;
-using System.Security;
-using System.Security.Cryptography.Xml;
 using Messenger.ViewModels;
 using System.Windows.Threading;
 using System.Windows;
-using Messenger.Models;
-using System.Windows.Controls;
-using System.Threading.Tasks;
 using System.Linq;
-using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Messenger.Models
@@ -26,9 +20,7 @@ namespace Messenger.Models
         const int BUFF_SIZE_FILE = 8192;
         const int BUFF_SIZE_MESSAGE = 512;
         // Настройка Сокета для подключения
-        static int port = 11000;
-        static IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse("26.167.27.192"), port);
-        static Socket serverSocket = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+        static Socket serverSocket;
         static bool connectedToServer = true;
         static public string clientLogin = "";
         static Kuznechik kuznechik = new Kuznechik(bytesMasterKey);
@@ -41,8 +33,35 @@ namespace Messenger.Models
         /// </summary>
         static public void StartClient()
         {
-            serverSocket.Connect(ipEndPoint); // Подключение к серверу
-            Thread.Sleep(500);
+            if (File.Exists("config.bin"))
+            {
+                string endPoint = File.ReadAllText("config.bin");
+                IPEndPoint ipEndPoint;
+                if (IPEndPoint.TryParse(endPoint, out ipEndPoint))
+                {
+                    serverSocket = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                    try
+                    {
+                        serverSocket.Connect(ipEndPoint); // Подключение к серверу
+                        Thread.Sleep(500);
+                    }
+                    catch
+                    {
+                        MessageBox.Show("Истекло время подключения к серверу.");
+                        Application.Current.Shutdown();
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Некорректный адрес сервера в \"config.bin\".");
+                    Application.Current.Shutdown();
+                }
+            }
+            else
+            {
+                MessageBox.Show("Не найден файл \"config.bin\".");
+                Application.Current.Shutdown();
+            }
         }
         /// <summary>
         /// Метод общения с сервером

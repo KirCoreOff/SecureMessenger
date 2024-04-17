@@ -31,7 +31,7 @@ namespace Messenger.ViewModels
             int regInfo = Client.Registration(UserName, new NetworkCredential("", UserPassword).Password);
             ChangeViewFromServerResponseRegistration(regInfo);
         }
-        private bool OnRegisterUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length != 0;
+        private bool OnRegisterUserCommandExecute(object p) => UserName.Length != 0 && UserPassword?.Length >= 6;
         #endregion
         #endregion
         #region Имя пользователя
