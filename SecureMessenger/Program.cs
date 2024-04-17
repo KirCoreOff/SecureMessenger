@@ -6,9 +6,8 @@ using System.IO;
 using System.Threading;
 using System.Collections.Generic;
 using MySql.Data.MySqlClient;
-
 using System.Linq;
-
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Messenger
 {
@@ -23,13 +22,13 @@ namespace Messenger
             const int BUFF_SIZE_FILE = 8192;
             const int BUFF_SIZE_MESSAGE = 512;
             // Настройка Сокета для подключения
-            static IPAddress IP;
-            static int port;
-            static IPHostEntry ipHost = Dns.GetHostEntry("");
-            static IPAddress ipAddr = ipHost.AddressList[10];
-            static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 11000);
-            static Socket sListener = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
+            //static IPAddress IP;
+            //static int port;
+            //static IPHostEntry ipHost = Dns.GetHostEntry("");
+            //static IPAddress ipAddr = ipHost.AddressList[10];
+            //static IPEndPoint ipEndPoint = new IPEndPoint(ipAddr, 11000);
+            static Socket sListener;
+            static IPEndPoint ipEndPoint;
             static public List<Thread> threads = new List<Thread>(); // Список потоков для работы с клиентами
             static private Dictionary<Socket, bool> clients = new Dictionary<Socket, bool>(); // Клиентские сокеты с меткой авторизации
 
@@ -42,33 +41,45 @@ namespace Messenger
             static public void StartServer()
             {
                 // Подключение к базе данных
-                try
-                {
-                    Console.WriteLine("Подключение к базе данных...");
-                    sql = DBConnect();
-                    sql.Open();
-                    Console.WriteLine("База данных подключена!");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Ошибка: " + e.Message);
-                }
+                sql = DBConnect();
+
                 IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName()); // Информация об IP-адресах и имени машины, на которой запущено приложение
                 IPAddress IP = hostEntry.AddressList[0]; // IP-адрес, который будет указан при создании сокета
                 int Port = 11000;  // Порт, который будет указан при создании сокета
-                // Настройка сокета сервара
-                try
+                                   // Настройка сокета сервара
+
+                if (File.Exists("config.bin"))
                 {
-                    sListener.Bind(ipEndPoint);
-                    sListener.Listen(10);
-                    threads.Clear();
-                    threads.Add(new Thread(ReceiveMessage)); // Запуск поктока на работу с подключенным клиентом
-                    threads[threads.Count - 1].Start();
+                    string endPoint = File.ReadAllText("config.bin");
+                    if (IPEndPoint.TryParse(endPoint, out ipEndPoint))
+                    {
+                        sListener = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                        try
+                        {
+                            sListener.Bind(ipEndPoint);
+                            sListener.Listen(10);
+                            threads.Clear();
+                            threads.Add(new Thread(ReceiveMessage)); // Запуск поктока на работу с подключенным клиентом
+                            threads[threads.Count - 1].Start();
+                        }
+                        catch
+                        {
+                            Console.WriteLine("Выбранный порт занят.");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Некорректный адрес сервера в \"config.bin\".");
+                        return;
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine(ex.ToString());
+                    Console.WriteLine("Не найден файл \"config.bin\".");
+                    return;
                 }
+
             }
             /// <summary>
             /// Метод подключения к базе данных
@@ -76,15 +87,59 @@ namespace Messenger
             /// <returns>Коннет с базой данных</returns>
             static MySqlConnection DBConnect()
             {
-                string host = "localhost";
-                int port = 3306;
-                string database = "securemessenger";
-                string username = "root";
-                string password = "root";
-                string conectData = $"Server={host};Database={database};User ID={username};Password={password};";
-                return new MySqlConnection(conectData);
-            }
+                try
+                {
+                    Console.WriteLine("Подключение к базе данных...");
+                    string host = "localhost";
+                    int port = 3306;
+                    string database = "securemessenger";
+                    string username = "root";
+                    string password = "root";
+                    string conectData = $"Server={host};User ID={username};Password={password};";
+                    MySqlConnection connection = new MySqlConnection(conectData);
+                    connection.Open();
+                    Console.WriteLine("База данных подключена!");
+                    try
+                    {
+                        string createDatabaseCommand = $"create database {database};";
+                        using (MySqlCommand cmd = new MySqlCommand(createDatabaseCommand, connection))
+                            cmd.ExecuteNonQuery();
+                    }
+                    catch (Exception) { }
+                    finally
+                    {
+                        string selectDatabase = $"use {database};";
+                        using (MySqlCommand cmd = new MySqlCommand(selectDatabase, connection))
+                            cmd.ExecuteNonQuery();
+                    }
+                    try
+                    {
+                        string createUserTableCommand = $"CREATE TABLE `users` (`login` varchar(255) NOT NULL, `password` blob, PRIMARY KEY (`login`));";
+                        using (MySqlCommand cmd = new MySqlCommand(createUserTableCommand, connection))
+                            cmd.ExecuteNonQuery();
 
+                    }
+                    catch (Exception) { }
+                    try
+                    {
+                        string createMessagesTableCommand = $"CREATE TABLE `messages` (`messageId` int NOT NULL AUTO_INCREMENT, `senderLogin` varchar(255) NOT NULL, `messageText` blob, `FilePath` blob, `timestamp` datetime NOT NULL, PRIMARY KEY (`messageId`), KEY `senderLogin` (`senderLogin`), CONSTRAINT `messages_ibfk_1` FOREIGN KEY (`senderLogin`) REFERENCES `users` (`login`));";
+                        using (MySqlCommand cmd = new MySqlCommand(createMessagesTableCommand, connection))
+                            cmd.ExecuteNonQuery();
+                    }
+                    catch (Exception) { }
+
+                    return connection;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Ошибка: " + e.Message);
+                    return null;
+                }
+
+            }
+            /// <summary>
+            /// Метод генерации аудита
+            /// </summary>
             static void Audit(string systemEvent)
             {
                 File.AppendAllText("audit.txt", $"{DateTime.Now} {systemEvent}\n");
@@ -155,12 +210,7 @@ namespace Messenger
                                 file.Write(buffFile, 0, currentBytesReceived);
                                 bytesReceived += currentBytesReceived;
                             }
-                            //for (int i = 0; i < packages; i++)
-                            //{
-                            //    bytesReceived = ((Socket)ClientSock).Receive(buff);
-                            //    file.Write(buff, 0, bytesReceived);
-                            //}
-                            Console.WriteLine($"Файл {fileName} Получен успешно! Вес файла: {file.Length} Байт");
+
                             byte[] encFilePath = kuznechik.Encript(Encoding.UTF8.GetBytes(fileName));
                             string command = $"insert into messages(senderLogin, FilePath, Timestamp)" +
                                 $" values(\"{clientLogin}\", @encFilePath, NOW())";
@@ -178,7 +228,6 @@ namespace Messenger
                     }
                     else if (infoPackage[0] == "M") // Метка получения сообщения
                     {
-                        Console.WriteLine(infoPackage[2].Trim('\0'));
                         byte[] encMessage = kuznechik.Encript(Encoding.UTF8.GetBytes(infoPackage[2]));
                         string command = $"insert into messages(senderLogin, messageText, Timestamp)" +
                             $" values(\"{clientLogin}\", @encMessage, NOW())";
@@ -237,20 +286,6 @@ namespace Messenger
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~1~")));
                             }
                         }
-                        //command = "select * from users";
-                        //// Получение всех записей  в бд
-                        //using (MySqlCommand selectCmd = new MySqlCommand(command, sql))
-                        //{
-                        //    using (MySqlDataReader reader = selectCmd.ExecuteReader())
-                        //    {
-                        //        while (reader.Read())
-                        //        {
-                        //            string login = reader.GetString("login");
-                        //            string password = reader.GetString("password");
-                        //            Console.WriteLine($"login: {login}, password: {password}");
-                        //        }
-                        //    }
-                        //}
                     }
                     else if (infoPackage[0] == "A") // Метка аутентификации клиента
                     {
@@ -280,13 +315,20 @@ namespace Messenger
                             {
                                 clients[(Socket)ClientSock] = true;
                                 clientLogin = infoPackage[1];
-                                string systemEvent = $"Пользователь {clientLogin} авторизировался";
+                                string systemEvent = $"Пользователь {clientLogin} авторизовался";
                                 Console.WriteLine(systemEvent);
                                 Audit(systemEvent);
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~0~")));
                                 SendMessage(kuznechik.Encript(Encoding.UTF8.GetBytes(
                                     $"M~Система~{clientLogin} подключился!~{DateTime.Now.ToShortTimeString()}~")), (Socket)ClientSock);
                                 SendMessageHistory((Socket)ClientSock);
+                            }
+                            else if (!userExist)
+                            {
+                                string systemEvent = $"Попытка входа в несуществующий аккаунт {infoPackage[1]}";
+                                Console.WriteLine(systemEvent);
+                                Audit(systemEvent);
+                                ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~2~")));
                             }
                             else
                             {
@@ -295,13 +337,7 @@ namespace Messenger
                                 Audit(systemEvent);
                                 ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~1~")));
                             }
-                            if (!userExist)
-                            {
-                                string systemEvent = $"Попытка входа в несуществующий аккаунт {infoPackage[1]}";
-                                Console.WriteLine(systemEvent);
-                                Audit(systemEvent);
-                                ((Socket)ClientSock).Send(kuznechik.Encript(Encoding.UTF8.GetBytes("S~2~")));
-                            }
+                            
                         }
                     }
                 }
@@ -350,7 +386,6 @@ namespace Messenger
             /// <param name="fileName">Имя файла</param>
             static void SendFile(string fileName, Socket senderSocket)
             {
-                int i = 0;
                 Console.WriteLine("Отправка файла клиентам...");
                 byte[] buffMsg = new byte[BUFF_SIZE_MESSAGE];
                 // Получение списка авторизованных клиентов
@@ -359,7 +394,7 @@ namespace Messenger
                 foreach (Socket client in authClient)
                 {
                     FileInfo file = new FileInfo(fileName);
-                    buffMsg = kuznechik.Encript(Encoding.UTF8.GetBytes($"F~{++i}{file.Name}~{file.Length}~"));
+                    buffMsg = kuznechik.Encript(Encoding.UTF8.GetBytes($"F~{file.Name}~{file.Length}~"));
                     client.Send(buffMsg);
                     client.SendFile(fileName);
                     Console.WriteLine($"Файл успешно отправлен! Вес файла: {file.Length} Байт");
